@@ -5,6 +5,7 @@
 typedef struct
 {
     double *weights;
+    int numWeights;
     double bias;
     double output;
 } Neuron;
@@ -23,6 +24,13 @@ typedef struct
     int numHiddenLayer;
 } NeuralNetwork;
 
+typedef struct
+{
+    // temp
+    double *inputs;
+    double expected;
+} Data;
+
 double sigmoid(double val)
 {
     return 1 / (1 + exp(-val));
@@ -39,11 +47,11 @@ double calcOutput(Layer *previousLayer, Neuron *neuron)
     return neuron->output;
 }
 
-void calcOutputLayer(Layer *priviousLayer, Layer *currentLayer)
+void calcOutputLayer(Layer *previousLayer, Layer *currentLayer)
 {
     for (int i = 0; i < currentLayer->size; i++)
     {
-        calcOutput(priviousLayer, &currentLayer->neurons[i]);
+        calcOutput(previousLayer, &currentLayer->neurons[i]);
     }
 }
 
@@ -52,6 +60,7 @@ void initialiseLayer(Layer *layer, int inputSize)
     for (int i = 0; i < layer->size; i++)
     {
         layer->neurons[i].weights = malloc(sizeof(double) * inputSize);
+        layer->neurons[i].numWeights = inputSize;
         for (int j = 0; j < inputSize; j++)
         {
             layer->neurons[i].weights[j] = ((double)rand() / RAND_MAX * 2 - 1);
@@ -82,7 +91,7 @@ void initialiseNeuralNetwork(NeuralNetwork *nn, int numHiddenLayer, int *hiddenL
         initialiseLayer(&nn->hiddenLayers[i], (i == 0) ? numInput : hiddenLayerSizes[i - 1]);
     }
     initialiseLayer(&nn->inputLayer, numInput);
-    initialiseLayer(&nn->outputLayer, hiddenLayerSizes[sizeof(hiddenLayerSizes) / sizeof(int) - 1]);
+    initialiseLayer(&nn->outputLayer, (numHiddenLayer == 0) ? numInput : hiddenLayerSizes[numHiddenLayer - 1]);
 }
 
 void freeLayer(Layer *layer)
@@ -91,40 +100,18 @@ void freeLayer(Layer *layer)
     {
         free(layer->neurons[i].weights);
     }
-
-    free(layer);
+    free(layer->neurons);
 }
 
 void freeNeuralNetwork(NeuralNetwork *nn)
 {
-    for (int i = 0; i < sizeof(nn->hiddenLayers) / sizeof(Layer); i++)
+    for (int i = 0; i < nn->numHiddenLayer; i++)
     {
         freeLayer(&nn->hiddenLayers[i]);
     }
     freeLayer(&nn->outputLayer);
     freeLayer(&nn->inputLayer);
     free(nn->hiddenLayers);
-}
-
-double cost(Layer *outputLayer, int expected)
-{
-    // expected number is which neuron is activated, indexed at 0
-    double cost = 0;
-
-    for (int i = 0; i < outputLayer->size; i++)
-    {
-        double output = outputLayer->neurons[i].output;
-        if (i == expected)
-        {
-            cost += (output - 1) * (output - 1);
-        }
-        else
-        {
-            cost += (output - 0) * (output - 0);
-        }
-    }
-
-    return cost / outputLayer->size;
 }
 
 void addInputs(NeuralNetwork *nn, double *inputs)
@@ -137,20 +124,95 @@ void addInputs(NeuralNetwork *nn, double *inputs)
 
 void computeNetwork(NeuralNetwork *nn)
 {
-    for (int i = 0; i < nn->numHiddenLayer; i++)
+    if (nn->numHiddenLayer == 0)
     {
-        calcOutputLayer(&nn->inputLayer, &nn->hiddenLayers[i]);
+        calcOutputLayer(&nn->inputLayer, &nn->outputLayer);
     }
+    else
+    {
+        Layer *currLayer = &nn->inputLayer;
+        for (int i = 0; i < nn->numHiddenLayer; i++)
+        {
+            calcOutputLayer(currLayer, &nn->hiddenLayers[i]);
+            currLayer = &nn->hiddenLayers[i];
+        }
+        calcOutputLayer(currLayer, &nn->outputLayer);
+    }
+}
 
-    calcOutputLayer(&nn->inputLayer, &nn->outputLayer);
+double cost(NeuralNetwork *nn, Data *trainingData, int numData)
+{
+    // expected number is which neuron is activated, indexed at 0
+    double cost = 0;
+
+    for (int i = 0; i < numData; i++)
+    {
+        addInputs(nn, trainingData[i].inputs);
+        computeNetwork(nn);
+        for (int j = 0; j < nn->outputLayer.size; j++)
+        {
+            double output = nn->outputLayer.neurons[j].output;
+            cost += (output - trainingData[i].expected) * (output - trainingData[i].expected);
+        }
+    }
+    return cost / numData;
 }
 
 void printResult(NeuralNetwork *nn)
 {
     for (int i = 0; i < nn->outputLayer.size; i++)
     {
-        printf("%d|", nn->outputLayer.neurons[i].output);
+        printf("%f ", nn->outputLayer.neurons[i].output);
     }
+}
+
+void layerLearn(NeuralNetwork *nn, Layer *layer, double learnRate, Data *trainingData, int numData)
+{
+    const double h = 0.0001;
+
+    double originalCost = cost(nn, trainingData, numData);
+    printf("%f \n", originalCost);
+
+    for (int i = 0; i < layer->size; i++)
+    {
+        for (int j = 0; j < layer->neurons[i].numWeights; j++)
+        {
+            layer->neurons[i].weights[j] += h;
+            double costGradiantW = (cost(nn, trainingData, numData) - originalCost) / h;
+            layer->neurons[i].weights[j] -= h;
+
+            // Gradiant decent weights
+            layer->neurons[i].weights[j] -= costGradiantW * learnRate;
+        }
+
+        layer->neurons[i].bias += h;
+        double costGradiantB = (cost(nn, trainingData, numData) - originalCost) / h;
+        layer->neurons[i].bias -= h;
+
+        // Gradiant decent bias
+        layer->neurons[i].bias -= costGradiantB * learnRate;
+    }
+}
+
+void learn(NeuralNetwork *nn, double learnRate, Data *trainingData, int numData)
+{
+    for (int i = 0; i < nn->numHiddenLayer; i++)
+    {
+        layerLearn(nn, &nn->hiddenLayers[i], learnRate, trainingData, numData);
+    }
+
+    layerLearn(nn, &nn->outputLayer, learnRate, trainingData, numData);
+}
+
+// Temp test create data
+Data createData(double a, double b, double expected)
+{
+    Data newData;
+    newData.inputs = malloc(sizeof(double) * 2);
+    newData.inputs[0] = a;
+    newData.inputs[1] = b;
+    newData.expected = expected;
+    return newData;
 }
 
 int main()
@@ -158,17 +220,40 @@ int main()
     int numInput = 2;
     int numHiddenLayer = 1;
     int *hiddenLayerSizes = malloc(numHiddenLayer * sizeof(int));
-    hiddenLayerSizes[0] = 16;
-    int outputLayerSize = 10;
+    hiddenLayerSizes[0] = 2;
+    int outputLayerSize = 1;
 
     NeuralNetwork network;
     initialiseNeuralNetwork(&network, numHiddenLayer, hiddenLayerSizes, outputLayerSize, numInput);
 
-    double input[2] = {1, 2};
-    addInputs(&network, input);
+    int numData = 4;
+    Data *trainingData = malloc(numData * sizeof(Data));
+    // test train xor
+    trainingData[0] = createData(0.0, 0.0, 0.0);
+    trainingData[1] = createData(0.0, 1.0, 1.0);
+    trainingData[2] = createData(1.0, 0.0, 1.0);
+    trainingData[3] = createData(1.0, 1.0, 0.0);
+
+    double learnRate = 0.0088;
+    int learnAmmount = 200000;
+    for (int i = 0; i < learnAmmount; i++)
+    {
+        learn(&network, learnRate, trainingData, numData);
+    }
+
+    double testInput[2] = {0, 0};
+    addInputs(&network, testInput);
     computeNetwork(&network);
     printResult(&network);
-    // use neural network here
     freeNeuralNetwork(&network);
+    for (int i = 0; i < numData; i++)
+    {
+        free(trainingData[i].inputs);
+    }
+    free(trainingData);
+    if (numHiddenLayer > 0)
+    {
+        free(hiddenLayerSizes);
+    }
     return 0;
 }
