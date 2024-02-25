@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <math.h>
 
+#define max(a, b) ((a) > (b) ? (a) : (b))
+
 typedef struct
 {
     double *weights;
@@ -36,14 +38,20 @@ double sigmoid(double val)
     return 1 / (1 + exp(-val));
 }
 
-double calcOutput(Layer *previousLayer, Neuron *neuron)
+double ReLU(double val)
+{
+    return max(0, val);
+}
+
+double
+calcOutput(Layer *previousLayer, Neuron *neuron)
 {
     neuron->output = 0.0; // Initialize output
     for (int i = 0; i < previousLayer->size; i++)
     {
         neuron->output += previousLayer->neurons[i].output * neuron->weights[i];
     }
-    neuron->output = sigmoid(neuron->output);
+    neuron->output = ReLU(neuron->output);
     return neuron->output;
 }
 
@@ -171,7 +179,6 @@ void layerLearn(NeuralNetwork *nn, Layer *layer, double learnRate, Data *trainin
     const double h = 0.0001;
 
     double originalCost = cost(nn, trainingData, numData);
-    printf("%f \n", originalCost);
 
     for (int i = 0; i < layer->size; i++)
     {
@@ -234,17 +241,44 @@ int main()
     trainingData[2] = createData(1.0, 0.0, 1.0);
     trainingData[3] = createData(1.0, 1.0, 0.0);
 
-    double learnRate = 0.0088;
-    int learnAmmount = 200000;
+    double learnRate = 0.008;
+    int learnAmmount = 500000;
+    int epochAmmount = 1000;
     for (int i = 0; i < learnAmmount; i++)
     {
+        if (i % epochAmmount == 0)
+        {
+            double newCost = cost(&network, trainingData, numData);
+            printf("Epoch learned %d, cost: %f \n", i, newCost);
+        }
         learn(&network, learnRate, trainingData, numData);
     }
 
-    double testInput[2] = {0, 0};
-    addInputs(&network, testInput);
-    computeNetwork(&network);
-    printResult(&network);
+    double testInput[2];
+    char input[3];
+    while (1)
+    {
+        printf("Enter test input (or 'q' to quit): ");
+        if (scanf("%lf %lf", &testInput[0], &testInput[1]) != 2)
+        {
+            scanf("%2s", input); // Read and discard extra characters
+            if (input[0] == 'q' || input[0] == 'Q')
+            {
+                break;
+            }
+            else
+            {
+                printf("Invalid input format. Please try again.\n");
+            }
+        }
+        else
+        {
+            addInputs(&network, testInput);
+            computeNetwork(&network);
+            printResult(&network);
+            printf("\n");
+        }
+    }
     freeNeuralNetwork(&network);
     for (int i = 0; i < numData; i++)
     {
