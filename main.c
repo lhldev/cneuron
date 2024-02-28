@@ -6,9 +6,10 @@
 
 typedef struct
 {
-    double signal; // for backpropagation
+    double delta; // for backpropagation
     double *weightsGradiantSum;
     double biasGradiantSum;
+    double weightedInput;
     double *weights;
     int numWeights;
     double bias;
@@ -38,12 +39,10 @@ typedef struct
 
 double sigmoid(double val, int isDeravative)
 {
-    // val is weighted input
     double result = 1 / (1 + exp(-val));
     if (isDeravative == 1)
     {
-        // val is neuron output
-        return val * (1 - val);
+        return result * (1 - result);
     }
     return result;
 }
@@ -59,12 +58,14 @@ double ReLU(double val, int isDeravative)
 
 double calcOutput(Layer *previousLayer, Neuron *neuron, double (*activationFunction)(double, int))
 {
-    neuron->output = 0.0; // Initialize output
+    neuron->output = 0.0;
+    neuron->weightedInput = 0.0;
     for (int i = 0; i < previousLayer->size; i++)
     {
-        neuron->output += previousLayer->neurons[i].output * neuron->weights[i];
+        neuron->weightedInput += previousLayer->neurons[i].output * neuron->weights[i];
     }
-    neuron->output = activationFunction(neuron->output, 0);
+    neuron->weightedInput += neuron->bias;
+    neuron->output = activationFunction(neuron->weightedInput, 0);
     return neuron->output;
 }
 
@@ -88,9 +89,10 @@ void initialiseLayer(Layer *layer, int inputSize)
             layer->neurons[i].weights[j] = ((double)rand() / RAND_MAX * 2 - 1);
             layer->neurons[i].weightsGradiantSum[j] = 0.0;
         }
-        layer->neurons[i].signal = 0.0;
+        layer->neurons[i].delta = 0.0;
         layer->neurons[i].bias = 0.0;
         layer->neurons[i].output = 0.0;
+        layer->neurons[i].weightedInput = 0.0;
     }
 }
 
@@ -191,10 +193,11 @@ void printResult(NeuralNetwork *nn)
     }
 }
 
-void layerLearn(NeuralNetwork *nn, Layer *privousLayer, Layer *layer, double learnRate, Data *trainingData, int numData, double (*activationFunction)(double, int))
+void layerLearnOutput(NeuralNetwork *nn, Layer *privousLayer, Layer *layer, double learnRate, Data *trainingData, double (*activationFunction)(double, int))
 {
     for (int i = 0; i < layer->size; i++)
     {
+        layer->neurons[i].delta = 0.0;
         layer->neurons[i].biasGradiantSum = 0.0;
         for (int j = 0; j < layer->neurons[i].numWeights; j++)
         {
@@ -202,71 +205,85 @@ void layerLearn(NeuralNetwork *nn, Layer *privousLayer, Layer *layer, double lea
         }
     }
 
-    for (int i = 0; i < numData; i++)
+    addInputs(nn, trainingData->inputs);
+    computeNetwork(nn);
+    for (int j = 0; j < layer->size; j++)
     {
-        addInputs(nn, trainingData[i].inputs);
-        computeNetwork(nn);
-        for (int j = 0; j < layer->size; j++)
+        double neuronOutput = layer->neurons[j].output;
+        double targetOutput = trainingData->expected;
+
+        layer->neurons[j].delta = 2 * (neuronOutput - targetOutput) * activationFunction(layer->neurons[j].weightedInput, 1);
+
+        for (int k = 0; k < layer->neurons[j].numWeights; k++)
         {
-            double neuronOutput = layer->neurons[j].output;
-            double targetOutput = trainingData[i].expected;
-
-            layer->neurons[j].signal = 2 * (neuronOutput - targetOutput) * activationFunction(neuronOutput, 1);
-
-            for (int k = 0; k < layer->neurons[j].numWeights; k++)
-            {
-                double input = privousLayer->neurons[k].output;
-                layer->neurons[j].weightsGradiantSum[k] += layer->neurons[j].signal * input * learnRate;
-            }
-
-            layer->neurons[j].biasGradiantSum += layer->neurons[j].signal * learnRate;
+            double input = privousLayer->neurons[k].output;
+            layer->neurons[j].weightsGradiantSum[k] += layer->neurons[j].delta * input;
         }
+
+        layer->neurons[j].biasGradiantSum += layer->neurons[j].delta;
     }
 
     for (int i = 0; i < layer->size; i++)
     {
         for (int j = 0; j < layer->neurons[i].numWeights; j++)
         {
-            layer->neurons[i].weights[j] -= layer->neurons[i].weightsGradiantSum[j] / numData;
+            layer->neurons[i].weights[j] -= layer->neurons[i].weightsGradiantSum[j] * learnRate;
         }
-        layer->neurons[i].bias -= layer->neurons[i].biasGradiantSum / numData;
+        layer->neurons[i].bias -= layer->neurons[i].biasGradiantSum * learnRate;
     }
 }
 
-void layerLearnIntermediate(NeuralNetwork *nn, Layer *previousLayer, Layer *layer, Layer *nextLayer, double learnRate, Data *trainingData, int numData, double (*activationFunction)(double, int))
+void layerLearnIntermediate(NeuralNetwork *nn, Layer *previousLayer, Layer *layer, Layer *nextLayer, double learnRate, Data *trainingData, double (*activationFunction)(double, int))
 {
-    for (int i = 0; i < numData; i++)
+    for (int i = 0; i < layer->size; i++)
     {
-        addInputs(nn, trainingData[i].inputs);
-        computeNetwork(nn);
-        for (int j = 0; j < layer->size; j++)
+        layer->neurons[i].delta = 0.0;
+        layer->neurons[i].biasGradiantSum = 0.0;
+        for (int j = 0; j < layer->neurons[i].numWeights; j++)
         {
-            double neuronOutput = layer->neurons[j].output;
-            layer->neurons[j].signal = 0.0;
-            for (int l = 0; l < nextLayer->size; l++)
-            {
-                double weightOfNextNeuron = nextLayer->neurons[l].weights[j];
-                double signalOfNextNeuron = nextLayer->neurons[l].signal;
-                layer->neurons[j].signal += weightOfNextNeuron * signalOfNextNeuron * activationFunction(neuronOutput, 1);
-            }
-
-            for (int k = 0; k < previousLayer->size; k++)
-            {
-                double input = previousLayer->neurons[k].output;
-                layer->neurons[j].weights[k] -= input * layer->neurons[j].signal * learnRate;
-            }
-
-            layer->neurons[j].bias -= layer->neurons[j].signal * learnRate;
+            layer->neurons[i].weightsGradiantSum[j] = 0.0;
         }
+    }
+
+    addInputs(nn, trainingData->inputs);
+    computeNetwork(nn);
+    for (int j = 0; j < layer->size; j++)
+    {
+        for (int l = 0; l < nextLayer->size; l++)
+        {
+            double weightOfNextNeuron = nextLayer->neurons[l].weights[j];
+            double deltaOfNextNeuron = nextLayer->neurons[l].delta;
+            layer->neurons[j].delta += weightOfNextNeuron * deltaOfNextNeuron * activationFunction(layer->neurons[j].weightedInput, 1);
+        }
+
+        for (int k = 0; k < layer->neurons[j].numWeights; k++)
+        {
+            double input = previousLayer->neurons[k].output;
+            layer->neurons[j].weightsGradiantSum[k] += layer->neurons[j].delta * input;
+        }
+
+        layer->neurons[j].biasGradiantSum += layer->neurons[j].delta;
+    }
+
+    for (int i = 0; i < layer->size; i++)
+    {
+        for (int j = 0; j < layer->neurons[i].numWeights; j++)
+        {
+            layer->neurons[i].weights[j] -= layer->neurons[i].weightsGradiantSum[j] * learnRate;
+        }
+        layer->neurons[i].bias -= layer->neurons[i].biasGradiantSum * learnRate;
     }
 }
 
 void learn(NeuralNetwork *nn, double learnRate, Data *trainingData, int numData)
 {
-    layerLearn(nn, (nn->numHiddenLayer == 0) ? &nn->inputLayer : &nn->hiddenLayers[nn->numHiddenLayer - 1], &nn->outputLayer, learnRate, trainingData, numData, nn->activationFunction);
-    for (int i = nn->numHiddenLayer - 1; i >= 0; i--)
+    for (int j = 0; j < numData; j++)
     {
-        layerLearnIntermediate(nn, (i == 0) ? &nn->inputLayer : &nn->hiddenLayers[i - 1], &nn->hiddenLayers[i], (i == nn->numHiddenLayer - 1) ? &nn->outputLayer : &nn->hiddenLayers[i + 1], learnRate, trainingData, numData, nn->activationFunction);
+        layerLearnOutput(nn, (nn->numHiddenLayer == 0) ? &nn->inputLayer : &nn->hiddenLayers[nn->numHiddenLayer - 1], &nn->outputLayer, learnRate, &trainingData[j], nn->activationFunction);
+        for (int i = nn->numHiddenLayer - 1; i >= 0; i--)
+        {
+            layerLearnIntermediate(nn, (i == 0) ? &nn->inputLayer : &nn->hiddenLayers[i - 1], &nn->hiddenLayers[i], (i == nn->numHiddenLayer - 1) ? &nn->outputLayer : &nn->hiddenLayers[i + 1], learnRate, &trainingData[j], nn->activationFunction);
+        }
     }
 }
 
@@ -301,10 +318,10 @@ int main()
     trainingData[2] = createData(1.0, 0.0, 1.0);
     trainingData[3] = createData(1.0, 1.0, 0.0);
 
-    double learnRate = 0.0008;
-    int learnAmmount = 2000000;
-    int epochAmmount = 1000;
-    for (int i = 0; i < learnAmmount; i++)
+    double learnRate = 0.008;
+    int learnAmmount = 1000000;
+    int epochAmmount = 10000;
+    for (int i = 0; i <= learnAmmount; i++)
     {
         if (i % epochAmmount == 0)
         {
