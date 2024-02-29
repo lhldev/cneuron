@@ -38,9 +38,10 @@ def inGrid(row, col):
     return 0 <= row < ROWS and 0 <= col < COLS
 
 def increaseVal(row, col, val):
-    grid[row, col] += val
-    if(grid[row, col] > 1):
-        grid[row, col] = 1
+    if(val < grid[row, col]):
+        grid[row, col] = min(1, grid[row, col] + val / 10)    
+    else:
+        grid[row, col] = val    
 
 def color(value):
     return (255*value, 255*value, 255*value)  # Return a tuple (R, G, B, A)
@@ -71,11 +72,13 @@ while running:
             x, y = pygame.mouse.get_pos()
             row, col = y // BOX_SIZE, x // BOX_SIZE
             if inGrid(row, col):
-                increaseVal(row, col, 0.2)
+                increaseVal(row, col, 1)
                 for i in range(-1, 2):
                     for j in range(-1, 2):
                         if inGrid(row + i, col + j) and (i != 0 and j != 0):
-                            increaseVal(row +i, col+j, 0.02)
+                            increaseVal(row +i, col+j, 0.95)
+                            
+
 
     # Draw grid
     for i in range(ROWS):

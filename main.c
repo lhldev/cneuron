@@ -458,9 +458,9 @@ int main()
     int numData = 0;
 
     // Parameters
-    int maxEach = 50;
+    int maxEach = 100;
     double learnRate = 0.3;
-    int learnAmmount = 20;
+    int learnAmmount = 1000;
     int epochAmmount = 10;
 
     Data *trainingData = populateDataSet(&numData, maxEach);
