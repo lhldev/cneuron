@@ -1,8 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#define STB_IMAGE_IMPLEMENTATION
+#include "lib/stb_image.h"
 
 #define max(a, b) ((a) > (b) ? (a) : (b))
+#define IMAGE_SIZE 28
 
 typedef struct
 {
@@ -33,8 +36,8 @@ typedef struct
 
 typedef struct
 {
-    double *inputs;
-    double expected;
+    double inputs[IMAGE_SIZE * IMAGE_SIZE];
+    int expected;
 } Data;
 
 double sigmoid(double val, int isDeravative)
@@ -287,15 +290,44 @@ void learn(NeuralNetwork *nn, double learnRate, Data *trainingData, int numData)
     }
 }
 
-// Temp test create data
-Data createData(double a, double b, double expected)
+Data dataFromImage(char *path)
 {
-    Data newData;
-    newData.inputs = malloc(sizeof(double) * 2);
-    newData.inputs[0] = a;
-    newData.inputs[1] = b;
-    newData.expected = expected;
-    return newData;
+    Data data;
+
+    int width, height, channels;
+    unsigned char *image = stbi_load(path, &width, &height, &channels, STBI_grey);
+    if (image == NULL)
+    {
+        fprintf(stderr, "Failed to load image: %s\n", path);
+        return data;
+    }
+
+    if (width != IMAGE_SIZE || height != IMAGE_SIZE || channels != 1)
+    {
+        fprintf(stderr, "Invalid image dimensions or channels: %s\n", path);
+        stbi_image_free(image);
+        return data;
+    }
+
+    for (int i = 0; i < IMAGE_SIZE * IMAGE_SIZE; i++)
+    {
+        data.inputs[i] = (double)image[i] / 255.0;
+    }
+
+    char *filename = strrchr(path, '/');
+    if (filename == NULL)
+    {
+        filename = path;
+    }
+    else
+    {
+        filename--;
+    }
+    data.expected = atoi(filename);
+
+    stbi_image_free(image);
+
+    return data;
 }
 
 int main()
@@ -310,16 +342,12 @@ int main()
     NeuralNetwork network;
     initialiseNeuralNetwork(&network, numHiddenLayer, hiddenLayerSizes, outputLayerSize, numInput, activationFunction);
 
-    int numData = 4;
-    Data *trainingData = malloc(numData * sizeof(Data));
-    // test train xor
-    trainingData[0] = createData(0.0, 0.0, 0.0);
-    trainingData[1] = createData(0.0, 1.0, 1.0);
-    trainingData[2] = createData(1.0, 0.0, 1.0);
-    trainingData[3] = createData(1.0, 1.0, 0.0);
-
+    int numData = 1;
+    char *trainPath1 = "data/train/1/3.png";
+    Data *trainingData = malloc(sizeof(Data) * numData);
+    trainingData[0] = dataFromImage(trainPath1);
     double learnRate = 0.008;
-    int learnAmmount = 1000000;
+    int learnAmmount = 0;
     int epochAmmount = 10000;
     for (int i = 0; i <= learnAmmount; i++)
     {
