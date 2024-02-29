@@ -389,6 +389,10 @@ Data dataFromImage(char *path)
         data.inputs[i] = (double)image[i] / 255.0;
     }
 
+    while (1)
+    {
+    }
+
     char *filename = strrchr(path, '/');
     if (filename == NULL)
     {
@@ -422,14 +426,10 @@ Data *populateDataSet(int *numData, int maxEachDigit, int *currentsPos)
         }
         int count = 0;
         int oldCurrent = *currentsPos;
-        while ((entry = readdir(dir)) != NULL)
+        while ((entry = readdir(dir)) != NULL && count - oldCurrent < maxEachDigit)
         {
-            if (count - oldCurrent >= maxEachDigit)
-            {
-                continue;
-            }
             count++;
-            if (count < currentsPos[i])
+            if (count <= oldCurrent)
             {
                 continue;
             }
@@ -442,11 +442,12 @@ Data *populateDataSet(int *numData, int maxEachDigit, int *currentsPos)
                 dataSet = realloc(dataSet, sizeof(Data) * (*numData));
                 dataSet[*numData - 1] = newData;
             }
-            else
-            {
-                currentsPos[i] = 0;
-            }
-            currentsPos[i] += 1;
+        }
+        currentsPos[i] += count - oldCurrent;
+        if (entry == NULL)
+        {
+            // no more files in this directory
+            currentsPos[i] = 0;
         }
         closedir(dir);
     }
@@ -475,7 +476,7 @@ int main()
     // Parameters
     int maxEach = 100;
     double learnRate = 0.3;
-    int learnAmmount = 1000;
+    int learnAmmount = 10;
     int epochAmmount = 10;
 
     Data *trainingData = populateDataSet(&numData, maxEach, currentsPos);
