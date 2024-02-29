@@ -405,7 +405,7 @@ Data dataFromImage(char *path)
     return data;
 }
 
-Data *populateDataSet(int *numData, int maxEachDigit)
+Data *populateDataSet(int *numData, int maxEachDigit, int *currentsPos)
 {
     *numData = 0;
     Data *dataSet = malloc(sizeof(Data));
@@ -421,11 +421,17 @@ Data *populateDataSet(int *numData, int maxEachDigit)
             exit(1);
         }
         int count = 0;
+        int oldCurrent = *currentsPos;
         while ((entry = readdir(dir)) != NULL)
         {
-            if (count >= maxEachDigit)
+            if (count - oldCurrent >= maxEachDigit)
             {
-                break;
+                continue;
+            }
+            count++;
+            if (count < currentsPos[i])
+            {
+                continue;
             }
             if (entry->d_type == DT_REG)
             {
@@ -436,7 +442,11 @@ Data *populateDataSet(int *numData, int maxEachDigit)
                 dataSet = realloc(dataSet, sizeof(Data) * (*numData));
                 dataSet[*numData - 1] = newData;
             }
-            count++;
+            else
+            {
+                currentsPos[i] = 0;
+            }
+            currentsPos[i] += 1;
         }
         closedir(dir);
     }
@@ -456,6 +466,11 @@ int main()
     initialiseNeuralNetwork(&network, numHiddenLayer, hiddenLayerSizes, outputLayerSize, numInput, activationFunction);
 
     int numData = 0;
+    int *currentsPos = malloc(sizeof(int) * 10);
+    for (int i = 0; i < 10; i++)
+    {
+        currentsPos[i] = 0;
+    }
 
     // Parameters
     int maxEach = 100;
@@ -463,16 +478,20 @@ int main()
     int learnAmmount = 1000;
     int epochAmmount = 10;
 
-    Data *trainingData = populateDataSet(&numData, maxEach);
+    Data *trainingData = populateDataSet(&numData, maxEach, currentsPos);
     for (int i = 0; i <= learnAmmount; i++)
     {
         if (i % epochAmmount == 0)
         {
             double newCost = cost(&network, trainingData, numData);
             printf("Epoch learned %d, cost: %f \n", i, newCost);
+            free(trainingData);
+            trainingData = populateDataSet(&numData, maxEach, currentsPos);
         }
         learn(&network, learnRate, trainingData, numData);
     }
+
+    free(currentsPos);
 
     FILE *fp;
     double userInput[IMAGE_SIZE * IMAGE_SIZE];
