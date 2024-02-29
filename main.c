@@ -3,6 +3,8 @@
 #include <math.h>
 #define STB_IMAGE_IMPLEMENTATION
 #include "lib/stb_image.h"
+#include <dirent.h>
+#include <sys/types.h>
 
 #define max(a, b) ((a) > (b) ? (a) : (b))
 #define IMAGE_SIZE 28
@@ -171,6 +173,38 @@ void computeNetwork(NeuralNetwork *nn)
     }
 }
 
+double outputNeuronPercentActivate(NeuralNetwork *nn, int neuronIndex)
+{
+    double sumActivation = 0.0;
+    for (int i = 0; i < nn->outputLayer.size; i++)
+    {
+        sumActivation += nn->outputLayer.neurons[i].output;
+    }
+    return nn->outputLayer.neurons[neuronIndex].output / sumActivation * 100;
+}
+
+double printOutputNeuronsPercentActivate(NeuralNetwork *nn)
+{
+    for (int i = 0; i < nn->outputLayer.size; i++)
+    {
+        printf(" (%d = %.2f%%) ", i, outputNeuronPercentActivate(nn, i));
+    }
+
+    printf("\n");
+}
+
+double outputNeuronExpected(int neuronIndex, Data *data)
+{
+    if (data->expected == neuronIndex)
+    {
+        return 1.0;
+    }
+    else
+    {
+        return 0.0;
+    }
+}
+
 double cost(NeuralNetwork *nn, Data *trainingData, int numData)
 {
     double cost = 0;
@@ -182,7 +216,7 @@ double cost(NeuralNetwork *nn, Data *trainingData, int numData)
         for (int j = 0; j < nn->outputLayer.size; j++)
         {
             double output = nn->outputLayer.neurons[j].output;
-            cost += (output - trainingData[i].expected) * (output - trainingData[i].expected);
+            cost += (output - outputNeuronExpected(j, &trainingData[i])) * (output - outputNeuronExpected(j, &trainingData[i]));
         }
     }
     return cost / numData;
@@ -213,7 +247,7 @@ void layerLearnOutput(NeuralNetwork *nn, Layer *privousLayer, Layer *layer, doub
     for (int j = 0; j < layer->size; j++)
     {
         double neuronOutput = layer->neurons[j].output;
-        double targetOutput = trainingData->expected;
+        double targetOutput = outputNeuronExpected(j, trainingData);
 
         layer->neurons[j].delta = 2 * (neuronOutput - targetOutput) * activationFunction(layer->neurons[j].weightedInput, 1);
 
@@ -330,25 +364,63 @@ Data dataFromImage(char *path)
     return data;
 }
 
+Data *populateDataSet(int *numData, int maxEachDigit)
+{
+    *numData = 0;
+    Data *dataSet = malloc(sizeof(Data));
+    for (int i = 0; i < 10; i++)
+    {
+        char subdirectory[30];
+        sprintf(subdirectory, "data/train/%d", i);
+        DIR *dir = opendir(subdirectory);
+        struct dirent *entry;
+        if (dir == NULL)
+        {
+            fprintf(stderr, "Failed to open directory: %s\n", subdirectory);
+            exit(1);
+        }
+        int count = 0;
+        while ((entry = readdir(dir)) != NULL)
+        {
+            if (count >= maxEachDigit)
+            {
+                break;
+            }
+            if (entry->d_type == DT_REG)
+            {
+                char filepath[256];
+                sprintf(filepath, "%s/%s", subdirectory, entry->d_name);
+                Data newData = dataFromImage(filepath);
+                *numData += 1;
+                dataSet = realloc(dataSet, sizeof(Data) * (*numData));
+                dataSet[*numData - 1] = newData;
+            }
+            count++;
+        }
+        closedir(dir);
+    }
+    return dataSet;
+}
+
 int main()
 {
-    int numInput = 2;
+    int numInput = IMAGE_SIZE * IMAGE_SIZE;
     int numHiddenLayer = 1;
     int *hiddenLayerSizes = malloc(numHiddenLayer * sizeof(int));
-    hiddenLayerSizes[0] = 2;
-    int outputLayerSize = 1;
+    hiddenLayerSizes[0] = 16;
+    int outputLayerSize = 10;
     double (*activationFunction)(double, int) = &sigmoid;
 
     NeuralNetwork network;
     initialiseNeuralNetwork(&network, numHiddenLayer, hiddenLayerSizes, outputLayerSize, numInput, activationFunction);
 
-    int numData = 1;
-    char *trainPath1 = "data/train/1/3.png";
-    Data *trainingData = malloc(sizeof(Data) * numData);
-    trainingData[0] = dataFromImage(trainPath1);
-    double learnRate = 0.008;
-    int learnAmmount = 0;
-    int epochAmmount = 10000;
+    int numData = 0;
+    int maxEach = 50;
+    Data *trainingData = populateDataSet(&numData, maxEach);
+
+    double learnRate = 0.3;
+    int learnAmmount = 500;
+    int epochAmmount = 10;
     for (int i = 0; i <= learnAmmount; i++)
     {
         if (i % epochAmmount == 0)
@@ -359,30 +431,25 @@ int main()
         learn(&network, learnRate, trainingData, numData);
     }
 
-    double testInput[2];
-    char input[3];
+    char path[100];
     while (1)
     {
-        printf("Enter test input (or 'q' to quit): ");
-        if (scanf("%lf %lf", &testInput[0], &testInput[1]) != 2)
+        printf("Enter the file path of the image to test (or 'q' to quit): ");
+        if (scanf("%99s", path) != 1)
         {
-            scanf("%2s", input); // Read and discard extra characters
-            if (input[0] == 'q' || input[0] == 'Q')
-            {
-                break;
-            }
-            else
-            {
-                printf("Invalid input format. Please try again.\n");
-            }
+            printf("Invalid input format. Please try again.\n");
+            continue;
         }
-        else
+
+        if (path[0] == 'q' || path[0] == 'Q')
         {
-            addInputs(&network, testInput);
-            computeNetwork(&network);
-            printResult(&network);
-            printf("\n");
+            break;
         }
+        Data testData = dataFromImage(path);
+
+        addInputs(&network, testData.inputs);
+        computeNetwork(&network);
+        printOutputNeuronsPercentActivate(&network);
     }
     freeNeuralNetwork(&network);
     for (int i = 0; i < numData; i++)
