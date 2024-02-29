@@ -183,14 +183,55 @@ double outputNeuronPercentActivate(NeuralNetwork *nn, int neuronIndex)
     return nn->outputLayer.neurons[neuronIndex].output / sumActivation * 100;
 }
 
-double printOutputNeuronsPercentActivate(NeuralNetwork *nn)
+void printOutputNeuronsPercentActivate(NeuralNetwork *nn)
 {
+
+    double *percentages = malloc(nn->outputLayer.size * sizeof(double));
+    int *indices = malloc(nn->outputLayer.size * sizeof(int));
+    if (percentages == NULL || indices == NULL)
+    {
+        printf("Memory allocation failed\n");
+        return;
+    }
+
+    // Store the activation percentages and indices
     for (int i = 0; i < nn->outputLayer.size; i++)
     {
-        printf(" (%d = %.2f%%) ", i, outputNeuronPercentActivate(nn, i));
+        percentages[i] = outputNeuronPercentActivate(nn, i);
+        indices[i] = i;
+    }
+
+    // Selection sort for percentages and corresponding indices
+    for (int i = 0; i < nn->outputLayer.size - 1; i++)
+    {
+        int max_idx = i;
+        for (int j = i + 1; j < nn->outputLayer.size; j++)
+        {
+            if (percentages[j] > percentages[max_idx])
+            {
+                max_idx = j;
+            }
+        }
+        // Swap percentages
+        double temp = percentages[max_idx];
+        percentages[max_idx] = percentages[i];
+        percentages[i] = temp;
+        // Swap indices
+        int temp_idx = indices[max_idx];
+        indices[max_idx] = indices[i];
+        indices[i] = temp_idx;
+    }
+
+    // Print the sorted percentages with neuron indices
+    for (int i = 0; i < nn->outputLayer.size; i++)
+    {
+        printf(" (%d = %.2f%%) ", indices[i], percentages[i]);
     }
 
     printf("\n");
+
+    free(percentages);
+    free(indices);
 }
 
 double outputNeuronExpected(int neuronIndex, Data *data)
@@ -415,12 +456,14 @@ int main()
     initialiseNeuralNetwork(&network, numHiddenLayer, hiddenLayerSizes, outputLayerSize, numInput, activationFunction);
 
     int numData = 0;
-    int maxEach = 50;
-    Data *trainingData = populateDataSet(&numData, maxEach);
 
+    // Parameters
+    int maxEach = 50;
     double learnRate = 0.3;
-    int learnAmmount = 500;
+    int learnAmmount = 20;
     int epochAmmount = 10;
+
+    Data *trainingData = populateDataSet(&numData, maxEach);
     for (int i = 0; i <= learnAmmount; i++)
     {
         if (i % epochAmmount == 0)
@@ -431,23 +474,44 @@ int main()
         learn(&network, learnRate, trainingData, numData);
     }
 
-    char path[100];
+    FILE *fp;
+    double userInput[IMAGE_SIZE * IMAGE_SIZE];
     while (1)
     {
-        printf("Enter the file path of the image to test (or 'q' to quit): ");
-        if (scanf("%99s", path) != 1)
-        {
-            printf("Invalid input format. Please try again.\n");
-            continue;
-        }
+        char *file_contents;
+        system("python input.py");
 
-        if (path[0] == 'q' || path[0] == 'Q')
+        // Open the file for reading
+        fp = fopen("grid_array.txt", "r");
+        if (fp == NULL)
         {
+            printf("Error opening file\n");
+            fclose(fp);
             break;
         }
-        Data testData = dataFromImage(path);
 
-        addInputs(&network, testData.inputs);
+        char quitFlag;
+        fscanf(fp, "%s", &quitFlag);
+        if (quitFlag == 'q')
+        {
+            fclose(fp);
+            break;
+        }
+
+        double genericDouble = 0.0;
+        int count = 0;
+        while (fscanf(fp, "%lf", &genericDouble) == 1)
+        {
+            if (count > IMAGE_SIZE * IMAGE_SIZE)
+            {
+                printf("Warning parsing input\n");
+                break;
+            }
+            userInput[count++] = genericDouble;
+        }
+        fclose(fp);
+
+        addInputs(&network, userInput);
         computeNetwork(&network);
         printOutputNeuronsPercentActivate(&network);
     }
