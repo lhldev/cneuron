@@ -1,3 +1,4 @@
+import math
 import sys, os
 
 # Disable print
@@ -37,12 +38,18 @@ grid = np.zeros((ROWS, COLS))
 def inGrid(row, col):
     return 0 <= row < ROWS and 0 <= col < COLS
 
-def increaseVal(row, col):
-    grid[row][col] = 1
-    for i in range(-1, 2):
-        for j in range(-1, 2):
-            if inGrid(row + i, col + j) and (i != 0 or j != 0):
-                grid[row + i][col + j] = min(1, max(grid[row+i][col+j] + 0.04, grid[row+i][col+j])); 
+def draw(x, y, radius):
+    row, col = y // BOX_SIZE, x // BOX_SIZE
+    if inGrid(row, col):
+        grid[row][col] = min(1, max(grid[row][col] + 0.2, grid[row][col]))
+        for i in range(col - 1, col+2):
+            for j in range(row - 1, row +2):
+                if distance((i+0.5)*BOX_SIZE, (j+0.5)*BOX_SIZE, x,y) <= radius:
+                    if inGrid(j, i):
+                        grid[j][i] = min(1, max(grid[j][i] + 0.02, grid[j][i]))
+                    
+def distance(x1, y1, x2, y2):
+    return math.sqrt((x2 - x1)**2 + (y2 - y1)**2)
 
 def color(value):
     return (255*value, 255*value, 255*value)  # Return a tuple (R, G, B, A)
@@ -69,11 +76,9 @@ while running:
             drawing = True
         elif event.type == pygame.MOUSEBUTTONUP:
             drawing = False
-        elif event.type == pygame.MOUSEMOTION and drawing:
+        elif drawing:
             x, y = pygame.mouse.get_pos()
-            row, col = y // BOX_SIZE, x // BOX_SIZE
-            if inGrid(row, col):
-                increaseVal(row, col)
+            draw(x, y, 20)
                             
 
 

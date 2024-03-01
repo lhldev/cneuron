@@ -582,7 +582,7 @@ Data *populateDataSet(int *numData, int maxEachDigit, int *currentsPos)
             {
                 char filepath[256];
                 sprintf(filepath, "%s/%s", subdirectory, entry->d_name);
-                Data newData = dataFromImage(filepath, randomFloat(-20, 20), randomFloat(0.8, 1.6), randomFloat(-2, 2), randomFloat(-2, 2), randomFloat(0, 0.4), randomFloat(0, 0.3));
+                Data newData = dataFromImage(filepath, randomFloat(-15, 15), randomFloat(0.8, 1.5), randomFloat(-2, 2), randomFloat(-2, 2), randomFloat(0, 0.3), randomFloat(0, 0.2));
                 *numData += 1;
                 dataSet = realloc(dataSet, sizeof(Data) * (*numData));
                 dataSet[*numData - 1] = newData;
@@ -605,7 +605,7 @@ int main()
     int numInput = IMAGE_SIZE * IMAGE_SIZE;
     int numHiddenLayer = 2;
     int *hiddenLayerSizes = malloc(numHiddenLayer * sizeof(int));
-    hiddenLayerSizes[0] = 256;
+    hiddenLayerSizes[0] = 100;
     hiddenLayerSizes[1] = 16;
     int outputLayerSize = 10;
     double (*activationFunction)(double, int) = &sigmoid;
@@ -623,8 +623,8 @@ int main()
     // Parameters
     int maxEach = 10;
     double learnRate = 0.3;
-    int learnAmmount = 2000;
-    int epochAmmount = 10;
+    int learnAmmount = 500;
+    int epochAmmount = 20;
 
     Data *trainingData = populateDataSet(&numData, maxEach, currentsPos);
     for (int i = 0; i <= learnAmmount; i++)
