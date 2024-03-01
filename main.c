@@ -3,11 +3,17 @@
 #include <math.h>
 #define STB_IMAGE_IMPLEMENTATION
 #include "lib/stb_image.h"
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "lib/stb_image_write.h"
 #include <dirent.h>
 #include <sys/types.h>
+#include <time.h>
 
 #define max(a, b) ((a) > (b) ? (a) : (b))
 #define IMAGE_SIZE 28
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 typedef struct
 {
@@ -365,7 +371,139 @@ void learn(NeuralNetwork *nn, double learnRate, Data *trainingData, int numData)
     }
 }
 
-Data dataFromImage(char *path)
+unsigned char *rotateImage(unsigned char *image, int width, int height, float angle)
+{
+    int newWidth = width;
+    int newHeight = height;
+    float rad = angle * M_PI / 180.0f;
+    float cosAngle = cos(rad);
+    float sinAngle = sin(rad);
+    unsigned char *newImage = (unsigned char *)malloc(newWidth * newHeight);
+
+    for (int y = 0; y < newHeight; y++)
+    {
+        for (int x = 0; x < newWidth; x++)
+        {
+            int centerX = newWidth / 2;
+            int centerY = newHeight / 2;
+            int srcX = (int)((x - centerX) * cosAngle - (y - centerY) * sinAngle + centerX);
+            int srcY = (int)((x - centerX) * sinAngle + (y - centerY) * cosAngle + centerY);
+
+            if (srcX >= 0 && srcX < width && srcY >= 0 && srcY < height)
+            {
+                newImage[y * newWidth + x] = image[srcY * width + srcX];
+            }
+            else
+            {
+                newImage[y * newWidth + x] = 0; // Set background color to black
+            }
+        }
+    }
+    return newImage;
+}
+
+unsigned char *scaleImage(unsigned char *image, int width, int height, float scale)
+{
+    int scaleWidth = width * scale;
+    int scaleHeight = height * scale;
+    unsigned char *scaleImage = (unsigned char *)malloc(scaleWidth * scaleHeight);
+    unsigned char *newImage = (unsigned char *)malloc(width * height);
+
+    for (int y = 0; y < scaleHeight; y++)
+    {
+        for (int x = 0; x < scaleWidth; x++)
+        {
+            int srcX = (int)(x / scale);
+            int srcY = (int)(y / scale);
+
+            if (srcX >= 0 && srcX < width && srcY >= 0 && srcY < height)
+            {
+                scaleImage[y * scaleWidth + x] = image[srcY * width + srcX];
+            }
+            else
+            {
+                scaleImage[y * scaleWidth + x] = 0; // Set background color to black
+            }
+        }
+    }
+    int offSetX = (scaleWidth - width) / 2;
+    int offSetY = (scaleHeight - height) / 2;
+    for (int y = 0; y < height; y++)
+    {
+        for (int x = 0; x < width; x++)
+        {
+            int scaleX = x + offSetX;
+            int scaleY = y + offSetY;
+            if (scaleX >= 0 && scaleX < scaleWidth && scaleY >= 0 && scaleY < scaleHeight)
+            {
+                newImage[y * width + x] = scaleImage[scaleY * scaleWidth + scaleX];
+            }
+            else
+            {
+                newImage[y * width + x] = 0;
+            }
+        }
+    }
+
+    free(scaleImage);
+    return newImage;
+}
+
+unsigned char *addOffset(unsigned char *image, int width, int height, int offsetX, int offsetY)
+{
+    unsigned char *newImage = (unsigned char *)malloc(width * height);
+
+    for (int y = 0; y < height; y++)
+    {
+        for (int x = 0; x < width; x++)
+        {
+            int newX = x + offsetX;
+            int newY = y + offsetY;
+
+            if (newX >= 0 && newX < width && newY >= 0 && newY < height)
+            {
+                newImage[y * width + x] = image[newY * width + newX];
+            }
+            else
+            {
+                newImage[y * width + x] = 0; // Set background color to black
+            }
+        }
+    }
+    return newImage;
+}
+
+unsigned char *addNoise(unsigned char *image, int width, int height, float noiseFactor, float probability)
+{
+    unsigned char *newImage = (unsigned char *)malloc(width * height);
+
+    for (int y = 0; y < height; y++)
+    {
+        for (int x = 0; x < width; x++)
+        {
+            float randomValue = (float)rand() / RAND_MAX; // Generate a random value between 0 and 1
+            if (randomValue <= probability)
+            {
+                int noise = (int)(rand() % 256 * noiseFactor);
+                int newValue = image[y * width + x] + noise;
+
+                if (newValue < 0)
+                    newValue = 0;
+                if (newValue > 255)
+                    newValue = 255;
+
+                newImage[y * width + x] = newValue;
+            }
+            else
+            {
+                newImage[y * width + x] = image[y * width + x];
+            }
+        }
+    }
+    return newImage;
+}
+
+Data dataFromImage(char *path, float angle, float scale, int offSetX, int offSetY, float noiseFactor, float probability)
 {
     Data data;
 
@@ -384,6 +522,11 @@ Data dataFromImage(char *path)
         return data;
     }
 
+    unsigned char *scaledImage = scaleImage(image, width, height, scale);
+    unsigned char *rotatedImage = rotateImage(scaledImage, width, height, angle);
+    unsigned char *offsetImage = addOffset(rotatedImage, width, height, offSetX, offSetY);
+    unsigned char *noisyImage = addNoise(offsetImage, width, height, noiseFactor, probability);
+
     for (int i = 0; i < IMAGE_SIZE * IMAGE_SIZE; i++)
     {
         data.inputs[i] = (double)image[i] / 255.0;
@@ -401,10 +544,16 @@ Data dataFromImage(char *path)
     data.expected = atoi(filename);
 
     stbi_image_free(image);
-
+    free(scaledImage);
+    free(rotatedImage);
+    free(offsetImage);
+    free(noisyImage);
     return data;
 }
-
+float randomFloat(float min, float max)
+{
+    return (float)rand() / RAND_MAX * (max - min) + min;
+}
 Data *populateDataSet(int *numData, int maxEachDigit, int *currentsPos)
 {
     *numData = 0;
@@ -433,7 +582,7 @@ Data *populateDataSet(int *numData, int maxEachDigit, int *currentsPos)
             {
                 char filepath[256];
                 sprintf(filepath, "%s/%s", subdirectory, entry->d_name);
-                Data newData = dataFromImage(filepath);
+                Data newData = dataFromImage(filepath, randomFloat(-20, 20), randomFloat(0.8, 1.6), randomFloat(-2, 2), randomFloat(-2, 2), randomFloat(0, 0.4), randomFloat(0, 0.3));
                 *numData += 1;
                 dataSet = realloc(dataSet, sizeof(Data) * (*numData));
                 dataSet[*numData - 1] = newData;
@@ -452,10 +601,12 @@ Data *populateDataSet(int *numData, int maxEachDigit, int *currentsPos)
 
 int main()
 {
+    srand(time(NULL));
     int numInput = IMAGE_SIZE * IMAGE_SIZE;
-    int numHiddenLayer = 1;
+    int numHiddenLayer = 2;
     int *hiddenLayerSizes = malloc(numHiddenLayer * sizeof(int));
-    hiddenLayerSizes[0] = 16;
+    hiddenLayerSizes[0] = 256;
+    hiddenLayerSizes[1] = 16;
     int outputLayerSize = 10;
     double (*activationFunction)(double, int) = &sigmoid;
 
@@ -470,9 +621,9 @@ int main()
     }
 
     // Parameters
-    int maxEach = 20;
+    int maxEach = 10;
     double learnRate = 0.3;
-    int learnAmmount = 10000;
+    int learnAmmount = 2000;
     int epochAmmount = 10;
 
     Data *trainingData = populateDataSet(&numData, maxEach, currentsPos);

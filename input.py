@@ -42,7 +42,7 @@ def increaseVal(row, col):
     for i in range(-1, 2):
         for j in range(-1, 2):
             if inGrid(row + i, col + j) and (i != 0 or j != 0):
-                grid[row + i][col + j] = min(1, max(grid[row+i][col+j] + 0.05, grid[row+i][col+j])); 
+                grid[row + i][col + j] = min(1, max(grid[row+i][col+j] + 0.04, grid[row+i][col+j])); 
 
 def color(value):
     return (255*value, 255*value, 255*value)  # Return a tuple (R, G, B, A)
