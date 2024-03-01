@@ -61,16 +61,16 @@ while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             # Save the grid array when the window is closed
-            np.savetxt('grid_array.txt', grid, fmt='%f')
+            np.savetxt('output/grid_array.txt', grid, fmt='%f')
             running = False
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_q:
                 # Save a custom array with the first element as 'q'
                 custom_array = ['q'] 
-                np.savetxt('grid_array.txt', custom_array, fmt='%s')
+                np.savetxt('output/grid_array.txt', custom_array, fmt='%s')
                 running = False
             elif event.key == pygame.K_ESCAPE or event.key == pygame.K_RETURN:
-                np.savetxt('grid_array.txt', grid, fmt='%f')
+                np.savetxt('output/grid_array.txt', grid, fmt='%f')
                 running = False
         elif event.type == pygame.MOUSEBUTTONDOWN:
             drawing = True

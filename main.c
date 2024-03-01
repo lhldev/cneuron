@@ -599,6 +599,120 @@ Data *populateDataSet(int *numData, int maxEachDigit, int *currentsPos)
     return dataSet;
 }
 
+void saveNetwork(const char *filename, NeuralNetwork *network)
+{
+    FILE *file = fopen(filename, "wb");
+    if (file == NULL)
+    {
+        printf("Error opening file for writing\n");
+        return;
+    }
+
+    fwrite(&(network->inputLayer.size), sizeof(int), 1, file);
+    fwrite(&(network->numHiddenLayer), sizeof(int), 1, file);
+
+    for (int i = 0; i < network->numHiddenLayer; i++)
+    {
+        fwrite(&(network->hiddenLayers[i].size), sizeof(int), 1, file);
+        for (int j = 0; j < network->hiddenLayers[i].size; j++)
+        {
+            fwrite(network->hiddenLayers[i].neurons[j].weights, sizeof(double), network->hiddenLayers[i].neurons[j].numWeights, file);
+            fwrite(&(network->hiddenLayers[i].neurons[j].bias), sizeof(double), 1, file);
+        }
+    }
+
+    // Output layer
+    fwrite(&(network->outputLayer.size), sizeof(int), 1, file);
+    for (int i = 0; i < network->outputLayer.size; i++)
+    {
+        fwrite(network->outputLayer.neurons[i].weights, sizeof(double), network->outputLayer.neurons[i].numWeights, file);
+        fwrite(&(network->outputLayer.neurons[i].bias), sizeof(double), 1, file);
+    }
+
+    fclose(file);
+}
+
+void loadNetwork(const char *filename, NeuralNetwork *network)
+{
+    FILE *file = fopen(filename, "rb");
+    if (file == NULL)
+    {
+        printf("Error opening file for reading\n");
+        return;
+    }
+
+    int checkVal = 0;
+    fread(&checkVal, sizeof(int), 1, file);
+    if (checkVal != network->inputLayer.size)
+    {
+        printf("Number of input layer not compatiable with save file, expected: %d\n", checkVal);
+        return;
+    }
+    fread(&checkVal, sizeof(int), 1, file);
+
+    if (checkVal != network->numHiddenLayer)
+    {
+        printf("Number of hidden layer not compatable with save file, expected: %d\n", checkVal);
+        return;
+    }
+    for (int i = 0; i < network->numHiddenLayer; i++)
+    {
+        checkVal = 0;
+        fread(&checkVal, sizeof(int), 1, file);
+        if (checkVal != network->hiddenLayers[i].size)
+        {
+            printf("Number of hidden layer neuron not compatable with save file, expected: %d\n", checkVal);
+            return;
+        }
+        for (int j = 0; j < network->hiddenLayers[i].size; j++)
+        {
+            fread(network->hiddenLayers[i].neurons[j].weights, sizeof(double), network->hiddenLayers[i].neurons[j].numWeights, file);
+            fread(&(network->hiddenLayers[i].neurons[j].bias), sizeof(double), 1, file);
+        }
+    }
+
+    // Output layer
+    checkVal = 0;
+    fread(&checkVal, sizeof(int), 1, file);
+    if (checkVal != network->outputLayer.size)
+    {
+        printf("Number of output layer neuron not compatable with save file, expected: %d\n", checkVal);
+        return;
+    }
+    for (int i = 0; i < network->outputLayer.size; i++)
+    {
+        fread(network->outputLayer.neurons[i].weights, sizeof(double), network->outputLayer.neurons[i].numWeights, file);
+        fread(&(network->outputLayer.neurons[i].bias), sizeof(double), 1, file);
+    }
+    fclose(file);
+}
+
+void train(NeuralNetwork *network, double learnRate, int *numData, int maxEach, int learnAmmount, int epochAmmount)
+{
+    int *currentsPos = malloc(sizeof(int) * 10);
+    for (int i = 0; i < 10; i++)
+    {
+        currentsPos[i] = 0;
+    }
+    Data *trainingData = populateDataSet(numData, maxEach, currentsPos);
+    for (int i = 0; i <= learnAmmount; i++)
+    {
+        if (i % epochAmmount == 0 && i != 0)
+        {
+            double newCost = cost(network, trainingData, *numData);
+            printf("Epoch learned %d, cost: %f \n", i, newCost);
+            free(trainingData);
+            trainingData = populateDataSet(numData, maxEach, currentsPos);
+        }
+        learn(network, learnRate, trainingData, *numData);
+    }
+    free(currentsPos);
+    free(trainingData);
+}
+
+// TODO:
+// gpu parallelization
+
 int main()
 {
     srand(time(NULL));
@@ -614,11 +728,6 @@ int main()
     initialiseNeuralNetwork(&network, numHiddenLayer, hiddenLayerSizes, outputLayerSize, numInput, activationFunction);
 
     int numData = 0;
-    int *currentsPos = malloc(sizeof(int) * 10);
-    for (int i = 0; i < 10; i++)
-    {
-        currentsPos[i] = 0;
-    }
 
     // Parameters
     int maxEach = 10;
@@ -626,68 +735,86 @@ int main()
     int learnAmmount = 500;
     int epochAmmount = 20;
 
-    Data *trainingData = populateDataSet(&numData, maxEach, currentsPos);
-    for (int i = 0; i <= learnAmmount; i++)
-    {
-        if (i % epochAmmount == 0)
-        {
-            double newCost = cost(&network, trainingData, numData);
-            printf("Epoch learned %d, cost: %f \n", i, newCost);
-            free(trainingData);
-            trainingData = populateDataSet(&numData, maxEach, currentsPos);
-        }
-        learn(&network, learnRate, trainingData, numData);
-    }
-
-    free(currentsPos);
-
+    char cmd[100];
     FILE *fp;
     double userInput[IMAGE_SIZE * IMAGE_SIZE];
     while (1)
     {
-        char *file_contents;
-        system("python input.py");
-
-        // Open the file for reading
-        fp = fopen("grid_array.txt", "r");
-        if (fp == NULL)
+        printf("cmd: ");
+        if (scanf("%99s", cmd) != 1)
         {
-            printf("Error opening file\n");
-            fclose(fp);
+            printf("Invalid input format. Please try again.\n");
+            continue;
+        }
+        if (cmd[0] == 'q')
+        {
             break;
         }
-
-        char quitFlag;
-        fscanf(fp, "%s", &quitFlag);
-        if (quitFlag == 'q')
+        else if (cmd[0] == 's')
         {
-            fclose(fp);
-            break;
+            saveNetwork("output/nn.dat", &network);
+            printf("Neural network saved!\n");
         }
-
-        double genericDouble = 0.0;
-        int count = 0;
-        while (fscanf(fp, "%lf", &genericDouble) == 1)
+        else if (cmd[0] == 'l')
         {
-            if (count > IMAGE_SIZE * IMAGE_SIZE)
+            loadNetwork("output/nn.dat", &network);
+            printf("Neural network loaded!\n");
+        }
+        else if (cmd[0] == 't')
+        {
+            train(&network, learnRate, &numData, maxEach, learnAmmount, epochAmmount);
+            printf("Training completed. Trained for %d times.\n", learnAmmount);
+        }
+        else if (cmd[0] == 'i')
+        {
+            printf("Enter your input in the window and press enter...\n");
+            while (1)
             {
-                printf("Warning parsing input\n");
-                break;
-            }
-            userInput[count++] = genericDouble;
-        }
-        fclose(fp);
+                char *file_contents;
+                system("python input.py");
 
-        addInputs(&network, userInput);
-        computeNetwork(&network);
-        printOutputNeuronsPercentActivate(&network);
+                // Open the file for reading
+                fp = fopen("output/grid_array.txt", "r");
+                if (fp == NULL)
+                {
+                    printf("Error opening file\n");
+                    fclose(fp);
+                    break;
+                }
+
+                char quitFlag;
+                fscanf(fp, "%s", &quitFlag);
+                if (quitFlag == 'q')
+                {
+                    fclose(fp);
+                    break;
+                }
+
+                double genericDouble = 0.0;
+                int count = 0;
+                while (fscanf(fp, "%lf", &genericDouble) == 1)
+                {
+                    if (count > IMAGE_SIZE * IMAGE_SIZE)
+                    {
+                        printf("Warning parsing input\n");
+                        break;
+                    }
+                    userInput[count++] = genericDouble;
+                }
+                fclose(fp);
+
+                addInputs(&network, userInput);
+                computeNetwork(&network);
+                printOutputNeuronsPercentActivate(&network);
+            }
+        }
+        else
+        {
+            printf("Command not recognised. t-train, i-insert input, l-load, s-save, q-quit\n");
+            continue;
+        }
     }
     freeNeuralNetwork(&network);
-    for (int i = 0; i < numData; i++)
-    {
-        free(trainingData[i].inputs);
-    }
-    free(trainingData);
     if (numHiddenLayer > 0)
     {
         free(hiddenLayerSizes);
