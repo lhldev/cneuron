@@ -687,7 +687,43 @@ void loadNetwork(const char *filename, NeuralNetwork *network)
     fclose(file);
 }
 
-void train(NeuralNetwork *network, double learnRate, int *numData, int maxEach, int learnAmmount, int epochAmmount)
+double testNetworkPercent(NeuralNetwork *nn)
+{
+    int tested = 0;
+    int correct = 0;
+    for (int i = 0; i < 10; i++)
+    {
+        char subdirectory[30];
+        sprintf(subdirectory, "data/test/%d", i);
+        DIR *dir = opendir(subdirectory);
+        struct dirent *entry;
+        if (dir == NULL)
+        {
+            fprintf(stderr, "Failed to open directory: %s\n", subdirectory);
+            exit(1);
+        }
+        while ((entry = readdir(dir)) != NULL)
+        {
+            if (entry->d_type == DT_REG)
+            {
+                tested++;
+                char filepath[256];
+                sprintf(filepath, "%s/%s", subdirectory, entry->d_name);
+                Data testData = dataFromImage(filepath, 0, 1, 0, 0, 0, 0);
+                addInputs(nn, testData.inputs);
+                computeNetwork(nn);
+                if (outputNeuronPercentActivate(nn, testData.expected) >= 50)
+                {
+                    correct++;
+                }
+            }
+        }
+        closedir(dir);
+    }
+    return (double)correct * 100 / (double)tested;
+}
+
+void train(NeuralNetwork *network, double learnRate, int *numData, int maxEach, int learnAmount, int epochAmount)
 {
     int *currentsPos = malloc(sizeof(int) * 10);
     for (int i = 0; i < 10; i++)
@@ -695,12 +731,17 @@ void train(NeuralNetwork *network, double learnRate, int *numData, int maxEach, 
         currentsPos[i] = 0;
     }
     Data *trainingData = populateDataSet(numData, maxEach, currentsPos);
-    for (int i = 0; i <= learnAmmount; i++)
+    clock_t startTime = clock();
+    for (int i = 0; i <= learnAmount; i++)
     {
-        if (i % epochAmmount == 0 && i != 0)
+        if (i % epochAmount == 0 && i != 0)
         {
             double newCost = cost(network, trainingData, *numData);
-            printf("Epoch learned %d, cost: %f \n", i, newCost);
+            clock_t elapsedMs = clock() - startTime;
+            double elapsedS = elapsedMs / CLOCKS_PER_SEC;
+            double speed = *numData / elapsedS * epochAmount;
+            printf("Epoch learned %d, cost: %f, elapsed time: %.2f s, speed: %.2f Data/s \n", i, newCost, elapsedS, speed);
+            startTime = clock();
             free(trainingData);
             trainingData = populateDataSet(numData, maxEach, currentsPos);
         }
@@ -732,8 +773,8 @@ int main()
     // Parameters
     int maxEach = 10;
     double learnRate = 0.3;
-    int learnAmmount = 500;
-    int epochAmmount = 20;
+    int learnAmount = 500;
+    int epochAmount = 60;
 
     char cmd[100];
     FILE *fp;
@@ -762,8 +803,13 @@ int main()
         }
         else if (cmd[0] == 't')
         {
-            train(&network, learnRate, &numData, maxEach, learnAmmount, epochAmmount);
-            printf("Training completed. Trained for %d times.\n", learnAmmount);
+            train(&network, learnRate, &numData, maxEach, learnAmount, epochAmount);
+            printf("Training completed. Trained for %d times.\n", learnAmount);
+        }
+        else if (cmd[0] == 'T')
+        {
+            printf("Testing neural network...\n");
+            printf("Network is %.2f%% correct!\n", testNetworkPercent(&network));
         }
         else if (cmd[0] == 'i')
         {
@@ -810,7 +856,7 @@ int main()
         }
         else
         {
-            printf("Command not recognised. t-train, i-insert input, l-load, s-save, q-quit\n");
+            printf("Command not recognised. \nt - train \nT - test network\ni - insert input \nl - load \ns - save \nq - quit\n");
             continue;
         }
     }
