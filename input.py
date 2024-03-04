@@ -52,7 +52,6 @@ def distance(x1, y1, x2, y2):
     return math.sqrt((x2 - x1)**2 + (y2 - y1)**2)
 
 def color(value):
-    value = value
     return (255*value, 255*value, 255*value)  # Return a tuple (R, G, B, A)
 
 # Main loop

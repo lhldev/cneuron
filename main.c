@@ -272,13 +272,12 @@ void printResult(NeuralNetwork *nn)
     }
 }
 
-void layerLearnOutput(NeuralNetwork *nn, Layer *privousLayer, Layer *layer, double learnRate, Data *trainingData, double (*activationFunction)(double, int))
+void layerLearnOutput(NeuralNetwork *nn, Layer *previousLayer, Layer *layer, double learnRate, Data *trainingData, double (*activationFunction)(double, int))
 {
     addInputs(nn, trainingData->inputs);
     computeNetwork(nn);
     for (int i = 0; i < layer->size; i++)
     {
-        layer->neurons[i].delta = 0.0;
         double neuronOutput = layer->neurons[i].output;
         double targetOutput = outputNeuronExpected(i, trainingData);
 
@@ -286,46 +285,44 @@ void layerLearnOutput(NeuralNetwork *nn, Layer *privousLayer, Layer *layer, doub
 
         for (int j = 0; j < layer->neurons[i].numWeights; j++)
         {
-            double input = privousLayer->neurons[j].output;
+            double input = previousLayer->neurons[j].output;
             layer->neurons[i].weights[j] -= layer->neurons[i].delta * input * learnRate;
         }
 
-        layer->neurons[i].bias += layer->neurons[i].delta * learnRate;
+        layer->neurons[i].bias -= layer->neurons[i].delta * learnRate;
     }
 }
 
-void layerLearnIntermediate(NeuralNetwork *nn, Layer *previousLayer, Layer *layer, Layer *nextLayer, double learnRate, Data *trainingData, double (*activationFunction)(double, int))
+void layerLearnIntermediate(NeuralNetwork *nn, Layer *previousLayer, Layer *layer, Layer *nextLayer, double learnRate, double (*activationFunction)(double, int))
 {
-    addInputs(nn, trainingData->inputs);
-    computeNetwork(nn);
     for (int i = 0; i < layer->size; i++)
     {
         layer->neurons[i].delta = 0.0;
-        for (int l = 0; l < nextLayer->size; l++)
+        for (int j = 0; j < nextLayer->size; j++)
         {
-            double weightOfNextNeuron = nextLayer->neurons[l].weights[i];
-            double deltaOfNextNeuron = nextLayer->neurons[l].delta;
+            double weightOfNextNeuron = nextLayer->neurons[j].weights[i];
+            double deltaOfNextNeuron = nextLayer->neurons[j].delta;
             layer->neurons[i].delta += weightOfNextNeuron * deltaOfNextNeuron * activationFunction(layer->neurons[i].weightedInput, 1);
         }
 
-        for (int j = 0; j < layer->neurons[i].numWeights; j++)
+        for (int k = 0; k < layer->neurons[i].numWeights; k++)
         {
-            double input = previousLayer->neurons[j].output;
-            layer->neurons[i].weights[j] += layer->neurons[i].delta * input * learnRate;
+            double input = previousLayer->neurons[k].output;
+            layer->neurons[i].weights[k] -= layer->neurons[i].delta * input * learnRate;
         }
 
-        layer->neurons[i].bias += layer->neurons[i].delta * learnRate;
+        layer->neurons[i].bias -= layer->neurons[i].delta * learnRate;
     }
 }
 
 void learn(NeuralNetwork *nn, double learnRate, Data *trainingData, int numData)
 {
-    for (int j = 0; j < numData; j++)
+    for (int i = 0; i < numData; i++)
     {
-        layerLearnOutput(nn, (nn->numHiddenLayer == 0) ? &nn->inputLayer : &nn->hiddenLayers[nn->numHiddenLayer - 1], &nn->outputLayer, learnRate, &trainingData[j], nn->activationFunction);
-        for (int i = nn->numHiddenLayer - 1; i >= 0; i--)
+        layerLearnOutput(nn, (nn->numHiddenLayer == 0) ? &nn->inputLayer : &nn->hiddenLayers[nn->numHiddenLayer - 1], &nn->outputLayer, learnRate, &trainingData[i], nn->activationFunction);
+        for (int j = nn->numHiddenLayer - 1; j >= 0; j--)
         {
-            layerLearnIntermediate(nn, (i == 0) ? &nn->inputLayer : &nn->hiddenLayers[i - 1], &nn->hiddenLayers[i], (i == nn->numHiddenLayer - 1) ? &nn->outputLayer : &nn->hiddenLayers[i + 1], learnRate, &trainingData[j], nn->activationFunction);
+            layerLearnIntermediate(nn, (j == 0) ? &nn->inputLayer : &nn->hiddenLayers[j - 1], &nn->hiddenLayers[j], (j == nn->numHiddenLayer - 1) ? &nn->outputLayer : &nn->hiddenLayers[j + 1], learnRate, nn->activationFunction);
         }
     }
 }
@@ -513,32 +510,34 @@ float randomFloat(float min, float max)
 {
     return (float)rand() / RAND_MAX * (max - min) + min;
 }
-Data *populateDataSet(int *numData, int maxEachDigit, int *currentsPos)
+Data *populateDataSet(int *numData, int maxEachDigit, int *currentPos)
 {
     *numData = 0;
     Data *dataSet = malloc(sizeof(Data));
+    int oldCurrent = *currentPos;
+    struct dirent *entry;
+    int count = 0;
     for (int i = 0; i < 10; i++)
     {
         char subdirectory[30];
         sprintf(subdirectory, "data/train/%d", i);
         DIR *dir = opendir(subdirectory);
-        struct dirent *entry;
         if (dir == NULL)
         {
             fprintf(stderr, "Failed to open directory: %s\n", subdirectory);
             exit(1);
         }
-        int count = 0;
-        int oldCurrent = *currentsPos;
+        count = 0;
         while ((entry = readdir(dir)) != NULL && count - oldCurrent < maxEachDigit)
         {
-            count++;
-            if (count <= oldCurrent)
+            if (count < oldCurrent)
             {
+                count++;
                 continue;
             }
             if (entry->d_type == DT_REG)
             {
+                count++;
                 char filepath[256];
                 sprintf(filepath, "%s/%s", subdirectory, entry->d_name);
                 Data newData = dataFromImage(filepath, randomFloat(-25, 25), randomFloat(0.8, 1.2), randomFloat(-10, 10), randomFloat(-10, 10), randomFloat(0, 0.2), randomFloat(0, 0.2));
@@ -547,13 +546,13 @@ Data *populateDataSet(int *numData, int maxEachDigit, int *currentsPos)
                 dataSet[*numData - 1] = newData;
             }
         }
-        currentsPos[i] += count - oldCurrent;
-        if (entry == NULL)
-        {
-            // no more files in this directory
-            currentsPos[i] = 0;
-        }
         closedir(dir);
+    }
+    *currentPos += count - oldCurrent;
+    if (entry == NULL)
+    {
+        // no more files in this directory
+        *currentPos = 0;
     }
     return dataSet;
 }
@@ -684,12 +683,8 @@ double testNetworkPercent(NeuralNetwork *nn)
 
 void train(NeuralNetwork *network, double learnRate, int *numData, int maxEach, int learnAmount, int epochAmount)
 {
-    int *currentsPos = malloc(sizeof(int) * 10);
-    for (int i = 0; i < 10; i++)
-    {
-        currentsPos[i] = 0;
-    }
-    Data *trainingData = populateDataSet(numData, maxEach, currentsPos);
+    int currentPos = 0;
+    Data *trainingData = populateDataSet(numData, maxEach, &currentPos);
     clock_t startTime = clock();
     for (int i = 0; i <= learnAmount; i++)
     {
@@ -697,16 +692,15 @@ void train(NeuralNetwork *network, double learnRate, int *numData, int maxEach, 
         {
             double newCost = cost(network, trainingData, *numData);
             clock_t elapsedMs = clock() - startTime;
-            double elapsedS = elapsedMs / CLOCKS_PER_SEC;
-            double speed = *numData / elapsedS * epochAmount;
-            printf("Epoch learned %d, cost: %f, elapsed time: %.2f s, speed: %.2f Data/s \n", i, newCost, elapsedS, speed);
+            double elapsedS = (double)elapsedMs / CLOCKS_PER_SEC;
+            double speed = (double)*numData / elapsedS * (double)epochAmount;
+            printf("Epoch learned %d, cost: %f, elapsed time: %.2fs, speed: %.2f Data/s \n", i, newCost, elapsedS, speed);
             startTime = clock();
             free(trainingData);
-            trainingData = populateDataSet(numData, maxEach, currentsPos);
+            trainingData = populateDataSet(numData, maxEach, &currentPos);
         }
         learn(network, learnRate, trainingData, *numData);
     }
-    free(currentsPos);
     free(trainingData);
 }
 
@@ -731,7 +725,7 @@ int main()
 
     // Parameters
     int maxEach = 10;
-    double learnRate = 0.3;
+    double learnRate = 0.03;
     int learnAmount = 10000;
     int epochAmount = 60;
 
