@@ -41,17 +41,18 @@ def inGrid(row, col):
 def draw(x, y, radius):
     row, col = y // BOX_SIZE, x // BOX_SIZE
     if inGrid(row, col):
-        grid[row][col] = min(1, max(grid[row][col] + 0.2, grid[row][col]))
+        grid[row][col] = min(1, max(grid[row][col] + 0.3, grid[row][col]))
         for i in range(col - 1, col+2):
             for j in range(row - 1, row +2):
                 if distance((i+0.5)*BOX_SIZE, (j+0.5)*BOX_SIZE, x,y) <= radius:
                     if inGrid(j, i):
-                        grid[j][i] = min(1, max(grid[j][i] + 0.02, grid[j][i]))
+                        grid[j][i] = min(1, max(grid[j][i] + 0.08, grid[j][i]))
                     
 def distance(x1, y1, x2, y2):
     return math.sqrt((x2 - x1)**2 + (y2 - y1)**2)
 
 def color(value):
+    value = value
     return (255*value, 255*value, 255*value)  # Return a tuple (R, G, B, A)
 
 # Main loop
@@ -78,7 +79,7 @@ while running:
             drawing = False
         elif drawing:
             x, y = pygame.mouse.get_pos()
-            draw(x, y, 20)
+            draw(x, y, BOX_SIZE + 10)
                             
 
 

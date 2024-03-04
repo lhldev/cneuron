@@ -18,8 +18,6 @@
 typedef struct
 {
     double delta; // for backpropagation
-    double *weightsGradiantSum;
-    double biasGradiantSum;
     double weightedInput;
     double *weights;
     int numWeights;
@@ -93,12 +91,10 @@ void initialiseLayer(Layer *layer, int inputSize)
     for (int i = 0; i < layer->size; i++)
     {
         layer->neurons[i].weights = malloc(sizeof(double) * inputSize);
-        layer->neurons[i].weightsGradiantSum = malloc(sizeof(double) * inputSize);
         layer->neurons[i].numWeights = inputSize;
         for (int j = 0; j < inputSize; j++)
         {
             layer->neurons[i].weights[j] = ((double)rand() / RAND_MAX * 2 - 1);
-            layer->neurons[i].weightsGradiantSum[j] = 0.0;
         }
         layer->neurons[i].delta = 0.0;
         layer->neurons[i].bias = 0.0;
@@ -137,7 +133,6 @@ void freeLayer(Layer *layer)
     for (int i = 0; i < layer->size; i++)
     {
         free(layer->neurons[i].weights);
-        free(layer->neurons[i].weightsGradiantSum);
     }
     free(layer->neurons);
 }
@@ -279,83 +274,47 @@ void printResult(NeuralNetwork *nn)
 
 void layerLearnOutput(NeuralNetwork *nn, Layer *privousLayer, Layer *layer, double learnRate, Data *trainingData, double (*activationFunction)(double, int))
 {
+    addInputs(nn, trainingData->inputs);
+    computeNetwork(nn);
     for (int i = 0; i < layer->size; i++)
     {
         layer->neurons[i].delta = 0.0;
-        layer->neurons[i].biasGradiantSum = 0.0;
+        double neuronOutput = layer->neurons[i].output;
+        double targetOutput = outputNeuronExpected(i, trainingData);
+
+        layer->neurons[i].delta = 2 * (neuronOutput - targetOutput) * activationFunction(layer->neurons[i].weightedInput, 1);
+
         for (int j = 0; j < layer->neurons[i].numWeights; j++)
         {
-            layer->neurons[i].weightsGradiantSum[j] = 0.0;
-        }
-    }
-
-    addInputs(nn, trainingData->inputs);
-    computeNetwork(nn);
-    for (int j = 0; j < layer->size; j++)
-    {
-        double neuronOutput = layer->neurons[j].output;
-        double targetOutput = outputNeuronExpected(j, trainingData);
-
-        layer->neurons[j].delta = 2 * (neuronOutput - targetOutput) * activationFunction(layer->neurons[j].weightedInput, 1);
-
-        for (int k = 0; k < layer->neurons[j].numWeights; k++)
-        {
-            double input = privousLayer->neurons[k].output;
-            layer->neurons[j].weightsGradiantSum[k] += layer->neurons[j].delta * input;
+            double input = privousLayer->neurons[j].output;
+            layer->neurons[i].weights[j] -= layer->neurons[i].delta * input * learnRate;
         }
 
-        layer->neurons[j].biasGradiantSum += layer->neurons[j].delta;
-    }
-
-    for (int i = 0; i < layer->size; i++)
-    {
-        for (int j = 0; j < layer->neurons[i].numWeights; j++)
-        {
-            layer->neurons[i].weights[j] -= layer->neurons[i].weightsGradiantSum[j] * learnRate;
-        }
-        layer->neurons[i].bias -= layer->neurons[i].biasGradiantSum * learnRate;
+        layer->neurons[i].bias += layer->neurons[i].delta * learnRate;
     }
 }
 
 void layerLearnIntermediate(NeuralNetwork *nn, Layer *previousLayer, Layer *layer, Layer *nextLayer, double learnRate, Data *trainingData, double (*activationFunction)(double, int))
 {
+    addInputs(nn, trainingData->inputs);
+    computeNetwork(nn);
     for (int i = 0; i < layer->size; i++)
     {
         layer->neurons[i].delta = 0.0;
-        layer->neurons[i].biasGradiantSum = 0.0;
-        for (int j = 0; j < layer->neurons[i].numWeights; j++)
-        {
-            layer->neurons[i].weightsGradiantSum[j] = 0.0;
-        }
-    }
-
-    addInputs(nn, trainingData->inputs);
-    computeNetwork(nn);
-    for (int j = 0; j < layer->size; j++)
-    {
         for (int l = 0; l < nextLayer->size; l++)
         {
-            double weightOfNextNeuron = nextLayer->neurons[l].weights[j];
+            double weightOfNextNeuron = nextLayer->neurons[l].weights[i];
             double deltaOfNextNeuron = nextLayer->neurons[l].delta;
-            layer->neurons[j].delta += weightOfNextNeuron * deltaOfNextNeuron * activationFunction(layer->neurons[j].weightedInput, 1);
+            layer->neurons[i].delta += weightOfNextNeuron * deltaOfNextNeuron * activationFunction(layer->neurons[i].weightedInput, 1);
         }
 
-        for (int k = 0; k < layer->neurons[j].numWeights; k++)
-        {
-            double input = previousLayer->neurons[k].output;
-            layer->neurons[j].weightsGradiantSum[k] += layer->neurons[j].delta * input;
-        }
-
-        layer->neurons[j].biasGradiantSum += layer->neurons[j].delta;
-    }
-
-    for (int i = 0; i < layer->size; i++)
-    {
         for (int j = 0; j < layer->neurons[i].numWeights; j++)
         {
-            layer->neurons[i].weights[j] -= layer->neurons[i].weightsGradiantSum[j] * learnRate;
+            double input = previousLayer->neurons[j].output;
+            layer->neurons[i].weights[j] += layer->neurons[i].delta * input * learnRate;
         }
-        layer->neurons[i].bias -= layer->neurons[i].biasGradiantSum * learnRate;
+
+        layer->neurons[i].bias += layer->neurons[i].delta * learnRate;
     }
 }
 
@@ -582,7 +541,7 @@ Data *populateDataSet(int *numData, int maxEachDigit, int *currentsPos)
             {
                 char filepath[256];
                 sprintf(filepath, "%s/%s", subdirectory, entry->d_name);
-                Data newData = dataFromImage(filepath, randomFloat(-15, 15), randomFloat(0.8, 1.5), randomFloat(-2, 2), randomFloat(-2, 2), randomFloat(0, 0.3), randomFloat(0, 0.2));
+                Data newData = dataFromImage(filepath, randomFloat(-25, 25), randomFloat(0.8, 1.2), randomFloat(-10, 10), randomFloat(-10, 10), randomFloat(0, 0.2), randomFloat(0, 0.2));
                 *numData += 1;
                 dataSet = realloc(dataSet, sizeof(Data) * (*numData));
                 dataSet[*numData - 1] = newData;
@@ -773,7 +732,7 @@ int main()
     // Parameters
     int maxEach = 10;
     double learnRate = 0.3;
-    int learnAmount = 500;
+    int learnAmount = 10000;
     int epochAmount = 60;
 
     char cmd[100];
