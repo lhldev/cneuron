@@ -670,7 +670,7 @@ double testNetworkPercent(NeuralNetwork *nn)
                 Data testData = dataFromImage(filepath, 0, 1, 0, 0, 0, 0);
                 addInputs(nn, testData.inputs);
                 computeNetwork(nn);
-                if (outputNeuronPercentActivate(nn, testData.expected) >= 50)
+                if (outputNeuronPercentActivate(nn, testData.expected) >= 50.0)
                 {
                     correct++;
                 }
@@ -678,7 +678,7 @@ double testNetworkPercent(NeuralNetwork *nn)
         }
         closedir(dir);
     }
-    return (double)correct * 100 / (double)tested;
+    return (double)correct * 100.0 / (double)tested;
 }
 
 void train(NeuralNetwork *network, double learnRate, int *numData, int maxEach, int learnAmount, int epochAmount)
