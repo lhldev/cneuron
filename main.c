@@ -65,7 +65,7 @@ double ReLU(double val, int isDeravative)
     return max(0, val);
 }
 
-double calcOutput(Layer *previousLayer, Neuron *neuron, double (*activationFunction)(double, int))
+void calcOutput(Layer *previousLayer, Neuron *neuron, double (*activationFunction)(double, int))
 {
     neuron->output = 0.0;
     neuron->weightedInput = 0.0;
@@ -75,7 +75,6 @@ double calcOutput(Layer *previousLayer, Neuron *neuron, double (*activationFunct
     }
     neuron->weightedInput += neuron->bias;
     neuron->output = activationFunction(neuron->weightedInput, 0);
-    return neuron->output;
 }
 
 void calcOutputLayer(Layer *previousLayer, Layer *currentLayer, double (*activationFunction)(double, int))
@@ -329,29 +328,27 @@ void learn(NeuralNetwork *nn, double learnRate, Data *trainingData, int numData)
 
 unsigned char *rotateImage(unsigned char *image, int width, int height, float angle)
 {
-    int newWidth = width;
-    int newHeight = height;
     float rad = angle * M_PI / 180.0f;
     float cosAngle = cos(rad);
     float sinAngle = sin(rad);
-    unsigned char *newImage = (unsigned char *)malloc(newWidth * newHeight);
+    unsigned char *newImage = (unsigned char *)malloc(width * height);
 
-    for (int y = 0; y < newHeight; y++)
+    for (int y = 0; y < height; y++)
     {
-        for (int x = 0; x < newWidth; x++)
+        for (int x = 0; x < width; x++)
         {
-            int centerX = newWidth / 2;
-            int centerY = newHeight / 2;
+            int centerX = width / 2;
+            int centerY = height / 2;
             int srcX = (int)((x - centerX) * cosAngle - (y - centerY) * sinAngle + centerX);
             int srcY = (int)((x - centerX) * sinAngle + (y - centerY) * cosAngle + centerY);
 
             if (srcX >= 0 && srcX < width && srcY >= 0 && srcY < height)
             {
-                newImage[y * newWidth + x] = image[srcY * width + srcX];
+                newImage[y * width + x] = image[srcY * width + srcX];
             }
             else
             {
-                newImage[y * newWidth + x] = 0; // Set background color to black
+                newImage[y * width + x] = 0.0; // Set background color to black
             }
         }
     }
@@ -378,7 +375,7 @@ unsigned char *scaleImage(unsigned char *image, int width, int height, float sca
             }
             else
             {
-                scaleImage[y * scaleWidth + x] = 0; // Set background color to black
+                scaleImage[y * scaleWidth + x] = 0.0; // Set background color to black
             }
         }
     }
@@ -396,7 +393,7 @@ unsigned char *scaleImage(unsigned char *image, int width, int height, float sca
             }
             else
             {
-                newImage[y * width + x] = 0;
+                newImage[y * width + x] = 0.0;
             }
         }
     }
@@ -422,7 +419,7 @@ unsigned char *addOffset(unsigned char *image, int width, int height, int offset
             }
             else
             {
-                newImage[y * width + x] = 0; // Set background color to black
+                newImage[y * width + x] = 0.0; // Set background color to black
             }
         }
     }
@@ -485,7 +482,7 @@ Data dataFromImage(char *path, float angle, float scale, int offSetX, int offSet
 
     for (int i = 0; i < IMAGE_SIZE * IMAGE_SIZE; i++)
     {
-        data.inputs[i] = (double)image[i] / 255.0;
+        data.inputs[i] = (double)noisyImage[i] / 255.0;
     }
 
     char *filename = strrchr(path, '/');
@@ -540,7 +537,7 @@ Data *populateDataSet(int *numData, int maxEachDigit, int *currentPos)
                 count++;
                 char filepath[256];
                 sprintf(filepath, "%s/%s", subdirectory, entry->d_name);
-                Data newData = dataFromImage(filepath, randomFloat(-25, 25), randomFloat(0.8, 1.2), randomFloat(-10, 10), randomFloat(-10, 10), randomFloat(0, 0.2), randomFloat(0, 0.2));
+                Data newData = dataFromImage(filepath, randomFloat(-25, 25), randomFloat(0.8, 1.2), randomFloat(-8, 8), randomFloat(-8, 8), randomFloat(0, 0.2), randomFloat(0, 0.2));
                 *numData += 1;
                 dataSet = realloc(dataSet, sizeof(Data) * (*numData));
                 dataSet[*numData - 1] = newData;
@@ -727,7 +724,7 @@ int main()
     int maxEach = 10;
     double learnRate = 0.03;
     int learnAmount = 10000;
-    int epochAmount = 60;
+    int epochAmount = 64;
 
     char cmd[100];
     FILE *fp;
