@@ -175,12 +175,23 @@ void computeNetwork(NeuralNetwork *nn)
 
 double outputNeuronPercentActivate(NeuralNetwork *nn, int neuronIndex)
 {
-    double sumActivation = 0.0;
+    double sum = 0.0;
+    double maxOutput = -INFINITY;
+
     for (int i = 0; i < nn->outputLayer.size; i++)
     {
-        sumActivation += nn->outputLayer.neurons[i].output;
+        if (nn->outputLayer.neurons[i].output > maxOutput)
+        {
+            maxOutput = nn->outputLayer.neurons[i].output;
+        }
     }
-    return nn->outputLayer.neurons[neuronIndex].output / sumActivation * 100;
+
+    for (int i = 0; i < nn->outputLayer.size; i++)
+    {
+        sum += exp(nn->outputLayer.neurons[i].output - maxOutput);
+    }
+
+    return exp(nn->outputLayer.neurons[neuronIndex].output - maxOutput) / sum * 100;
 }
 
 void printOutputNeuronsPercentActivate(NeuralNetwork *nn)
@@ -537,7 +548,7 @@ Data *populateDataSet(int *numData, int maxEachDigit, int *currentPos)
                 count++;
                 char filepath[256];
                 sprintf(filepath, "%s/%s", subdirectory, entry->d_name);
-                Data newData = dataFromImage(filepath, randomFloat(-25, 25), randomFloat(0.8, 1.2), randomFloat(-8, 8), randomFloat(-8, 8), randomFloat(0, 0.2), randomFloat(0, 0.2));
+                Data newData = dataFromImage(filepath, randomFloat(-10, 10), randomFloat(0.9, 1.1), randomFloat(-3, 3), randomFloat(-3, 3), 0.1, 0.1);
                 *numData += 1;
                 dataSet = realloc(dataSet, sizeof(Data) * (*numData));
                 dataSet[*numData - 1] = newData;
@@ -600,14 +611,14 @@ void loadNetwork(const char *filename, NeuralNetwork *network)
     fread(&checkVal, sizeof(int), 1, file);
     if (checkVal != network->inputLayer.size)
     {
-        printf("Number of input layer not compatiable with save file, expected: %d\n", checkVal);
+        printf("Number of input layer not compatiable with save file, read: %d\n", checkVal);
         return;
     }
     fread(&checkVal, sizeof(int), 1, file);
 
     if (checkVal != network->numHiddenLayer)
     {
-        printf("Number of hidden layer not compatable with save file, expected: %d\n", checkVal);
+        printf("Number of hidden layer not compatable with save file, read: %d\n", checkVal);
         return;
     }
     for (int i = 0; i < network->numHiddenLayer; i++)
@@ -616,7 +627,7 @@ void loadNetwork(const char *filename, NeuralNetwork *network)
         fread(&checkVal, sizeof(int), 1, file);
         if (checkVal != network->hiddenLayers[i].size)
         {
-            printf("Number of hidden layer neuron not compatable with save file, expected: %d\n", checkVal);
+            printf("Number of hidden layer neuron not compatable with save file, read: %d\n", checkVal);
             return;
         }
         for (int j = 0; j < network->hiddenLayers[i].size; j++)
@@ -631,7 +642,7 @@ void loadNetwork(const char *filename, NeuralNetwork *network)
     fread(&checkVal, sizeof(int), 1, file);
     if (checkVal != network->outputLayer.size)
     {
-        printf("Number of output layer neuron not compatable with save file, expected: %d\n", checkVal);
+        printf("Number of output layer neuron not compatable with save file, read: %d\n", checkVal);
         return;
     }
     for (int i = 0; i < network->outputLayer.size; i++)
@@ -687,14 +698,14 @@ void train(NeuralNetwork *network, double learnRate, int *numData, int maxEach, 
     {
         if (i % epochAmount == 0 && i != 0)
         {
+            free(trainingData);
+            trainingData = populateDataSet(numData, maxEach, &currentPos);
             double newCost = cost(network, trainingData, *numData);
             clock_t elapsedMs = clock() - startTime;
             double elapsedS = (double)elapsedMs / CLOCKS_PER_SEC;
             double speed = (double)*numData / elapsedS * (double)epochAmount;
             printf("Epoch learned %d, cost: %f, elapsed time: %.2fs, speed: %.2f Data/s \n", i, newCost, elapsedS, speed);
             startTime = clock();
-            free(trainingData);
-            trainingData = populateDataSet(numData, maxEach, &currentPos);
         }
         learn(network, learnRate, trainingData, *numData);
     }
