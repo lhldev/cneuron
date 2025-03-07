@@ -8,10 +8,6 @@
 #include <sys/types.h>
 #include <time.h>
 
-#define max(a, b) ((a) > (b) ? (a) : (b))
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 #define IMAGE_SIZE 28
 
 typedef struct {
@@ -37,18 +33,18 @@ typedef struct {
 } neural_network_t;
 
 float sigmoid(float val, int is_deravative) {
-    float result = 1 / (1 + exp(-val));
+    float result = 1.0f / (1.0f + exp(-val));
     if (is_deravative == 1) {
-        return result * (1 - result);
+        return result * (1.0f - result);
     }
     return result;
 }
 
 float relu(float val, int is_deravative) {
     if (is_deravative) {
-        return (val > 0) ? 1 : 0;
+        return (val > 0.0f) ? 1.0f : 0.0f;
     }
-    return max(0, val);
+    return fmax(0.0f, val);
 }
 
 void calc_output(layer_t *previous_layer, neuron_t *neuron, float (*activation_function)(float, int)) {
@@ -74,10 +70,10 @@ void initialise_layer(layer_t *layer, int input_size) {
         for (int j = 0; j < input_size; j++) {
             layer->neurons[i].weights[j] = ((float)rand() / RAND_MAX * 2 - 1);
         }
-        layer->neurons[i].delta = 0.0;
-        layer->neurons[i].bias = 0.0;
-        layer->neurons[i].output = 0.0;
-        layer->neurons[i].weighted_input = 0.0;
+        layer->neurons[i].delta = 0.0f;
+        layer->neurons[i].bias = 0.0f;
+        layer->neurons[i].output = 0.0f;
+        layer->neurons[i].weighted_input = 0.0f;
     }
 }
 
@@ -139,7 +135,7 @@ void compute_network(neural_network_t *nn) {
 }
 
 float output_neuron_percent_activate(neural_network_t *nn, int neuron_index) {
-    float sum = 0.0;
+    float sum = 0.0f;
     float max_output = -INFINITY;
 
     for (unsigned int i = 0; i < nn->output_layer.length; i++) {
@@ -152,7 +148,7 @@ float output_neuron_percent_activate(neural_network_t *nn, int neuron_index) {
         sum += exp(nn->output_layer.neurons[i].output - max_output);
     }
 
-    return exp(nn->output_layer.neurons[neuron_index].output - max_output) / sum * 100;
+    return exp(nn->output_layer.neurons[neuron_index].output - max_output) / sum * 100.0f;
 }
 
 void print_output_neurons_percent_activate(neural_network_t *nn) {
@@ -200,14 +196,14 @@ void print_output_neurons_percent_activate(neural_network_t *nn) {
 
 float output_neuron_expected(unsigned int neuron_index, data_t *data) {
     if (data->neuron_index == neuron_index) {
-        return 1.0;
+        return 1.0f;
     } else {
-        return 0.0;
+        return 0.0f;
     }
 }
 
 float cost(neural_network_t *nn, data_t *training_data, int num_data) {
-    float cost = 0;
+    float cost = 0.0f;
 
     for (int i = 0; i < num_data; i++) {
         add_inputs(nn, training_data[i].inputs);
@@ -246,7 +242,7 @@ void layer_learn_output(neural_network_t *nn, layer_t *previous_layer, layer_t *
 
 void layer_learn_intermediate(layer_t *previous_layer, layer_t *layer, layer_t *next_layer, float learn_rate, float (*activation_function)(float, int)) {
     for (unsigned int i = 0; i < layer->length; i++) {
-        layer->neurons[i].delta = 0.0;
+        layer->neurons[i].delta = 0.0f;
         for (unsigned int j = 0; j < next_layer->length; j++) {
             float weight_next_neuron = next_layer->neurons[j].weights[i];
             float delta_next_neuron = next_layer->neurons[j].delta;
@@ -268,146 +264,6 @@ void learn(neural_network_t *nn, float learn_rate, data_t *data) {
         layer_learn_intermediate((j == 0) ? &nn->input_layer : &nn->hidden_layers[j - 1], &nn->hidden_layers[j], ((unsigned int)j == nn->num_hidden_layer - 1) ? &nn->output_layer : &nn->hidden_layers[j + 1], learn_rate, nn->activation_function);
     }
 }
-
-unsigned char *rotate_image(unsigned char *image, int width, int height, float angle) {
-    float rad = angle * M_PI / 180.0f;
-    float cos_angle = cos(rad);
-    float sin_angle = sin(rad);
-    unsigned char *new_image = (unsigned char *)malloc(width * height);
-
-    for (int y = 0; y < height; y++) {
-        for (int x = 0; x < width; x++) {
-            int center_x = width / 2;
-            int center_y = height / 2;
-            int src_x = (int)((x - center_x) * cos_angle - (y - center_y) * sin_angle + center_x);
-            int src_y = (int)((x - center_x) * sin_angle + (y - center_y) * cos_angle + center_y);
-
-            if (src_y >= 0 && src_x < width && src_y >= 0 && src_y < height) {
-                new_image[y * width + x] = image[src_y * width + src_x];
-            } else {
-                new_image[y * width + x] = 0.0;  // Set background color to black
-            }
-        }
-    }
-    return new_image;
-}
-
-unsigned char *scale_image(unsigned char *image, int width, int height, float scale) {
-    int scale_width = width * scale;
-    int scale_height = height * scale;
-    unsigned char *scale_image = (unsigned char *)malloc(scale_width * scale_height);
-    unsigned char *new_image = (unsigned char *)malloc(width * height);
-
-    for (int y = 0; y < scale_height; y++) {
-        for (int x = 0; x < scale_width; x++) {
-            int src_x = (int)(x / scale);
-            int src_y = (int)(y / scale);
-
-            if (src_x >= 0 && src_x < width && src_y >= 0 && src_y < height) {
-                scale_image[y * scale_width + x] = image[src_y * width + src_x];
-            } else {
-                scale_image[y * scale_width + x] = 0.0;  // Set background color to black
-            }
-        }
-    }
-    int off_set_x = (scale_width - width) / 2;
-    int off_set_y = (scale_height - height) / 2;
-    for (int y = 0; y < height; y++) {
-        for (int x = 0; x < width; x++) {
-            int scale_x = x + off_set_x;
-            int scale_y = y + off_set_y;
-            if (scale_x >= 0 && scale_x < scale_width && scale_y >= 0 && scale_y < scale_height) {
-                new_image[y * width + x] = scale_image[scale_y * scale_width + scale_x];
-            } else {
-                new_image[y * width + x] = 0.0;
-            }
-        }
-    }
-
-    free(scale_image);
-    return new_image;
-}
-
-unsigned char *add_offset(unsigned char *image, int width, int height, int offset_x, int offset_y) {
-    unsigned char *new_image = (unsigned char *)malloc(width * height);
-
-    for (int y = 0; y < height; y++) {
-        for (int x = 0; x < width; x++) {
-            int new_x = x + offset_x;
-            int new_y = y + offset_y;
-
-            if (new_x >= 0 && new_x < width && new_y >= 0 && new_y < height) {
-                new_image[y * width + x] = image[new_y * width + new_x];
-            } else {
-                new_image[y * width + x] = 0.0;  // Set background color to black
-            }
-        }
-    }
-    return new_image;
-}
-
-unsigned char *add_noise(unsigned char *image, int width, int height, float noise_factor, float probability) {
-    unsigned char *new_image = (unsigned char *)malloc(width * height);
-
-    for (int y = 0; y < height; y++) {
-        for (int x = 0; x < width; x++) {
-            float random_value = (float)rand() / RAND_MAX;  // Generate a random value between 0 and 1
-            if (random_value <= probability) {
-                int noise = (int)(rand() % 256 * noise_factor);
-                int new_value = image[y * width + x] + noise;
-
-                if (new_value < 0) new_value = 0;
-                if (new_value > 255) new_value = 255;
-
-                new_image[y * width + x] = new_value;
-            } else {
-                new_image[y * width + x] = image[y * width + x];
-            }
-        }
-    }
-    return new_image;
-}
-
-// data_t data_from_image(char *path, float angle, float scale, int offset_x, int offset_y, float noise_factor, float probability) {
-    // data_t data;
-
-    // int width, height, channels;
-    // unsigned char *image = stbi_load(path, &width, &height, &channels, STBI_grey);
-    // if (image == NULL) {
-        // fprintf(stderr, "Failed to load image: %s\n", path);
-        // return data;
-    // }
-
-    // if (width != IMAGE_SIZE || height != IMAGE_SIZE || channels != 1) {
-        // fprintf(stderr, "Invalid image dimensions or channels: %s\n", path);
-        // stbi_image_free(image);
-        // return data;
-    // }
-
-    // unsigned char *scaled_image = scale_image(image, width, height, scale);
-    // unsigned char *rotated_image = rotate_image(scaled_image, width, height, angle);
-    // unsigned char *offset_image = add_offset(rotated_image, width, height, offset_x, offset_y);
-    // unsigned char *noisy_image = add_noise(offset_image, width, height, noise_factor, probability);
-
-    // for (int i = 0; i < IMAGE_SIZE * IMAGE_SIZE; i++) {
-        // data.inputs[i] = (float)noisy_image[i] / 255.0;
-    // }
-
-    // char *filename = strrchr(path, '/');
-    // if (filename == NULL) {
-        // filename = path;
-    // } else {
-        // filename--;
-    // }
-    // data.expected = atoi(filename);
-
-    // stbi_image_free(image);
-    // free(scaled_image);
-    // free(rotated_image);
-    // free(offset_image);
-    // free(noisy_image);
-    // return data;
-// }
 
 float random_float(float min, float max) { return (float)rand() / RAND_MAX * (max - min) + min; }
 
@@ -506,7 +362,7 @@ float test_network_percent(neural_network_t *nn) {
 
     free_dataset(test_dataset, dataset_length);
 
-    return (float)correct * 100.0 / (float)dataset_length;
+    return (float)correct * 100.0f / (float)dataset_length;
 }
 
 void train(neural_network_t *network, data_t **dataset, unsigned int dataset_length, float learn_rate, int learn_amount, int epoch_amount) {
@@ -521,8 +377,13 @@ void train(neural_network_t *network, data_t **dataset, unsigned int dataset_len
             printf("Epoch learned %d, elapsed time: %.2fs, speed: %.2f Data/s \n", i, elapsed_s, speed);
             start_time = clock();
         }
-        data_t *data =  dataset[rand() % dataset_length];
+        data_t *data =  get_data_copy(dataset[rand() % dataset_length], IMAGE_SIZE * IMAGE_SIZE);
+        rotate_data(data, IMAGE_SIZE, IMAGE_SIZE, random_float(-5.0f, 5.0f));
+        scale_data(data, IMAGE_SIZE, IMAGE_SIZE, random_float(0.9f, 1.1f));
+        offset_data(data, IMAGE_SIZE, IMAGE_SIZE, random_float(-3.0f, 3.0f), random_float(-3.0f, 3.0f));
+        noise_data(data, IMAGE_SIZE * IMAGE_SIZE, 0.5f, 0.05f);
         learn(network, learn_rate, data);
+        free_data(data);
     }
 }
 
@@ -544,8 +405,8 @@ int main() {
     initialise_neural_network(&network, num_hidden_layer, hidden_layer_sizes, output_layer_size, inputs_length, &sigmoid);
 
     // Parameters
-    float learn_rate = 0.03;
-    int learn_amount = 1000000;
+    float learn_rate = 0.03f;
+    int learn_amount = 200000;
     int epoch_amount = 2000;
 
     char cmd[100];
@@ -585,7 +446,6 @@ int main() {
 
                 char quit_flag;
                 fscanf(fp, " %c", &quit_flag);
-                printf("%c\n", quit_flag);
                 if (quit_flag == 'q') {
                     fclose(fp);
                     break;
@@ -597,10 +457,6 @@ int main() {
                     if (count >= IMAGE_SIZE * IMAGE_SIZE) {
                         printf("Warning parsing input\n");
                         break;
-                    }
-                    printf("%.1f ", generic_float);
-                    if(count % IMAGE_SIZE == IMAGE_SIZE - 1){
-                        printf("\n");
                     }
                     user_input[count++] = generic_float;
                 }
