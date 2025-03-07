@@ -509,7 +509,7 @@ float test_network_percent(neural_network_t *nn) {
     return (float)correct * 100.0 / (float)dataset_length;
 }
 
-void train(neural_network_t *network, data_t** dataset, unsigned int dataset_length, float learn_rate, int learn_amount, int epoch_amount) {
+void train(neural_network_t *network, data_t **dataset, unsigned int dataset_length, float learn_rate, int learn_amount, int epoch_amount) {
     clock_t start_time = clock();
     for (int i = 0; i < learn_amount; i++) {
         if (i % epoch_amount == 0 && i != 0) {
@@ -545,7 +545,7 @@ int main() {
 
     // Parameters
     float learn_rate = 0.03;
-    int learn_amount = 100000;
+    int learn_amount = 1000000;
     int epoch_amount = 2000;
 
     char cmd[100];
@@ -580,12 +580,12 @@ int main() {
                 fp = fopen("output/grid_array.txt", "r");
                 if (fp == NULL) {
                     printf("Error opening file\n");
-                    fclose(fp);
                     break;
                 }
 
                 char quit_flag;
-                fscanf(fp, "%s", &quit_flag);
+                fscanf(fp, " %c", &quit_flag);
+                printf("%c\n", quit_flag);
                 if (quit_flag == 'q') {
                     fclose(fp);
                     break;
@@ -594,9 +594,13 @@ int main() {
                 float generic_float = 0.0;
                 int count = 0;
                 while (fscanf(fp, "%f", &generic_float) == 1) {
-                    if (count > IMAGE_SIZE * IMAGE_SIZE) {
+                    if (count >= IMAGE_SIZE * IMAGE_SIZE) {
                         printf("Warning parsing input\n");
                         break;
+                    }
+                    printf("%.1f ", generic_float);
+                    if(count % IMAGE_SIZE == IMAGE_SIZE - 1){
+                        printf("\n");
                     }
                     user_input[count++] = generic_float;
                 }

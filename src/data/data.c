@@ -32,7 +32,7 @@ data_t **get_dataset(const char *filename, unsigned int *dataset_length, unsigne
     return dataset;
 }
 
-void free_dataset(data_t** dataset, unsigned int dataset_length) {
+void free_dataset(data_t **dataset, unsigned int dataset_length) {
     for (unsigned int i = 0; i < dataset_length; i++) {
         free(dataset[i]->inputs);
     }
