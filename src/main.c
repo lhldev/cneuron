@@ -68,7 +68,7 @@ void initialise_layer(layer_t *layer, int input_size) {
         layer->neurons[i].weights = malloc(sizeof(float) * input_size);
         layer->neurons[i].num_weights = input_size;
         for (int j = 0; j < input_size; j++) {
-            layer->neurons[i].weights[j] = ((float)rand() / RAND_MAX * 2 - 1);
+            layer->neurons[i].weights[j] = ((float)rand() / (float)RAND_MAX * 2.0f - 1.0f);
         }
         layer->neurons[i].delta = 0.0f;
         layer->neurons[i].bias = 0.0f;
@@ -202,18 +202,19 @@ float output_neuron_expected(unsigned int neuron_index, data_t *data) {
     }
 }
 
-float cost(neural_network_t *nn, data_t *training_data, int num_data) {
+float cost(neural_network_t *nn, data_t **test_dataset, unsigned int test_dataset_length, unsigned int num_test) {
     float cost = 0.0f;
 
-    for (int i = 0; i < num_data; i++) {
-        add_inputs(nn, training_data[i].inputs);
+    for (unsigned int i = 0; i < num_test; i++) {
+        data_t *test_data = test_dataset[rand() % test_dataset_length];
+        add_inputs(nn, test_data->inputs);
         compute_network(nn);
         for (unsigned int j = 0; j < nn->output_layer.length; j++) {
             float output = nn->output_layer.neurons[j].output;
-            cost += (output - output_neuron_expected(j, &training_data[i])) * (output - output_neuron_expected(j, &training_data[i]));
+            cost += (output - output_neuron_expected(j, test_data)) * (output - output_neuron_expected(j, test_data));
         }
     }
-    return cost / num_data;
+    return cost / num_test;
 }
 
 void print_result(neural_network_t *nn) {
@@ -265,7 +266,7 @@ void learn(neural_network_t *nn, float learn_rate, data_t *data) {
     }
 }
 
-float random_float(float min, float max) { return (float)rand() / RAND_MAX * (max - min) + min; }
+float random_float(float min, float max) { return (float)rand() / (float)RAND_MAX * (max - min) + min; }
 
 void save_network(const char *filename, neural_network_t *network) {
     FILE *file = fopen(filename, "wb");
@@ -341,12 +342,9 @@ void load_network(const char *filename, neural_network_t *network) {
     fclose(file);
 }
 
-float test_network_percent(neural_network_t *nn) {
-    unsigned int dataset_length = 0;
-    unsigned int inputs_length = 0;
-    data_t **test_dataset = get_dataset("data/mnist/mnist_test.dat", &dataset_length, &inputs_length);
+float test_network_percent(neural_network_t *nn, data_t** test_dataset, unsigned int test_dataset_length) {
     int correct = 0;
-    for (unsigned int i = 0; i < dataset_length; i++) {
+    for (unsigned int i = 0; i < test_dataset_length; i++) {
         add_inputs(nn, test_dataset[i]->inputs);
         compute_network(nn);
         unsigned int max = 0;
@@ -360,28 +358,25 @@ float test_network_percent(neural_network_t *nn) {
         }
     }
 
-    free_dataset(test_dataset, dataset_length);
-
-    return (float)correct * 100.0f / (float)dataset_length;
+    return (float)correct * 100.0f / (float)test_dataset_length;
 }
 
-void train(neural_network_t *network, data_t **dataset, unsigned int dataset_length, float learn_rate, int learn_amount, int epoch_amount) {
+void train(neural_network_t *network, data_t **dataset, unsigned int dataset_length, data_t **test_dataset, unsigned int test_dataset_length, float learn_rate, int learn_amount, int log_amount) {
     clock_t start_time = clock();
     for (int i = 0; i < learn_amount; i++) {
-        if (i % epoch_amount == 0 && i != 0) {
-            // float new_cost = cost(network, training_data, *num_data);
+        if (i % log_amount == 0 && i != 0) {
+            float new_cost = cost(network, test_dataset, test_dataset_length, 100);
             clock_t elapsed_ms = clock() - start_time;
             float elapsed_s = (float)elapsed_ms / CLOCKS_PER_SEC;
-            float speed = (float)epoch_amount / elapsed_s;
-            // printf("Epoch learned %d, cost: %f, elapsed time: %.2fs, speed: %.2f Data/s \n", i, new_cost, elapsed_s, speed);
-            printf("Epoch learned %d, elapsed time: %.2fs, speed: %.2f Data/s \n", i, elapsed_s, speed);
+            float speed = (float)log_amount / elapsed_s;
+            printf("Learned: %d, cost: %f, elapsed time: %.2fs, speed: %.2f Data/s\n", i, new_cost, elapsed_s, speed);
             start_time = clock();
         }
         data_t *data =  get_data_copy(dataset[rand() % dataset_length], IMAGE_SIZE * IMAGE_SIZE);
         rotate_data(data, IMAGE_SIZE, IMAGE_SIZE, random_float(-5.0f, 5.0f));
         scale_data(data, IMAGE_SIZE, IMAGE_SIZE, random_float(0.9f, 1.1f));
         offset_data(data, IMAGE_SIZE, IMAGE_SIZE, random_float(-3.0f, 3.0f), random_float(-3.0f, 3.0f));
-        noise_data(data, IMAGE_SIZE * IMAGE_SIZE, 0.5f, 0.05f);
+        noise_data(data, IMAGE_SIZE * IMAGE_SIZE, 0.3f, 0.08f);
         learn(network, learn_rate, data);
         free_data(data);
     }
@@ -394,7 +389,10 @@ int main() {
     srand(time(NULL));
     unsigned int inputs_length = 0;
     unsigned int dataset_length = 0;
+    unsigned int test_dataset_length = 0;
+    unsigned int test_inputs_length = 0;
     data_t **dataset = get_dataset("data/mnist/mnist_train.dat", &dataset_length, &inputs_length);
+    data_t **test_dataset = get_dataset("data/mnist/mnist_test.dat", &test_dataset_length, &test_inputs_length);
     int num_hidden_layer = 2;
     int *hidden_layer_sizes = malloc(num_hidden_layer * sizeof(int));
     hidden_layer_sizes[0] = 100;
@@ -406,8 +404,8 @@ int main() {
 
     // Parameters
     float learn_rate = 0.03f;
-    int learn_amount = 200000;
-    int epoch_amount = 2000;
+    int learn_amount = 100000;
+    int log_amount = 2000;
 
     char cmd[100];
     FILE *fp;
@@ -427,11 +425,11 @@ int main() {
             load_network("output/nn.dat", &network);
             printf("Neural network loaded!\n");
         } else if (cmd[0] == 't') {
-            train(&network, dataset, dataset_length, learn_rate, learn_amount, epoch_amount);
+            train(&network, dataset, dataset_length, test_dataset, test_dataset_length, learn_rate, learn_amount, log_amount);
             printf("Training completed. Trained for %d times.\n", learn_amount);
         } else if (cmd[0] == 'T') {
             printf("Testing neural network...\n");
-            printf("Network is %.2f%% correct!\n", test_network_percent(&network));
+            printf("Network is %.2f%% correct!\n", test_network_percent(&network, test_dataset, test_dataset_length));
         } else if (cmd[0] == 'i') {
             printf("Enter your input in the window and press enter...\n");
             while (1) {
@@ -474,6 +472,7 @@ int main() {
         }
     }
     free_dataset(dataset, dataset_length);
+    free_dataset(test_dataset, test_dataset_length);
     free_neural_network(&network);
     if (num_hidden_layer > 0) {
         free(hidden_layer_sizes);

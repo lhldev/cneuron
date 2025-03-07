@@ -22,7 +22,10 @@ data_t **get_dataset(const char *filename, unsigned int *dataset_length, unsigne
     for (unsigned int i = 0; i < *dataset_length; i++) {
         data_t *data = malloc(sizeof(data_t));
         data->inputs = malloc(sizeof(float) * *inputs_length);
-        fread(data->inputs, sizeof(float), *inputs_length, file);
+        size_t read_count = fread(data->inputs, sizeof(float), *inputs_length, file);
+        if (read_count != *inputs_length) {
+            printf("Error: Failed to read data. Maybe you haven't run 'git lfs pull'?\n");
+        }
         fread(&(data->neuron_index), sizeof(unsigned int), 1, file);
 
         dataset[i] = data;
@@ -141,9 +144,9 @@ void offset_data(data_t *data, int width, int height, float offset_x, float offs
 
 void noise_data(data_t *data, unsigned int inputs_length, float noise_factor, float probability) {
     for (unsigned int i = 0; i < inputs_length; i++) {
-        float random_value = (float)rand() / RAND_MAX;
+        float random_value = (float)rand() / (float)RAND_MAX;
         if (random_value <= probability) {
-            float noise = ((float)rand() / RAND_MAX * noise_factor);
+            float noise = ((float)rand() / (float)RAND_MAX * noise_factor);
             float new_value = data->inputs[i] + noise;
 
             data->inputs[i] = fmin(new_value, 1.0f);
