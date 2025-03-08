@@ -6,17 +6,11 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 file(GLOB_RECURSE SRC_FILES src/*.c)
-FILE(GLOB_RECURSE EXTERNAL_FILES external/*.c)
-
-# include_directories(external)
-
-# add_library(ExternalLib ${EXTERNAL_FILES})
 
 add_executable(${PROJECT_NAME} ${SRC_FILES})
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/include)
 
-# target_link_libraries(${PROJECT_NAME} PRIVATE ExternalLib m)
 target_link_libraries(${PROJECT_NAME} PRIVATE m)
 
 target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic)

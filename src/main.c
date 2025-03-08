@@ -154,10 +154,6 @@ float output_neuron_percent_activate(neural_network_t *nn, int neuron_index) {
 void print_output_neurons_percent_activate(neural_network_t *nn) {
     float *percentages = malloc(nn->output_layer.length * sizeof(float));
     int *indices = malloc(nn->output_layer.length * sizeof(int));
-    if (percentages == NULL || indices == NULL) {
-        printf("Memory allocation failed\n");
-        return;
-    }
 
     // Store the activation percentages and indices
     for (unsigned int i = 0; i < nn->output_layer.length; i++) {
@@ -270,7 +266,7 @@ float random_float(float min, float max) { return (float)rand() / (float)RAND_MA
 
 void save_network(const char *filename, neural_network_t *network) {
     FILE *file = fopen(filename, "wb");
-    if (file == NULL) {
+    if (!file) {
         printf("Error opening file for writing\n");
         return;
     }
@@ -298,7 +294,7 @@ void save_network(const char *filename, neural_network_t *network) {
 
 void load_network(const char *filename, neural_network_t *network) {
     FILE *file = fopen(filename, "rb");
-    if (file == NULL) {
+    if (!file) {
         printf("Error opening file for reading\n");
         return;
     }
@@ -437,7 +433,7 @@ int main() {
 
                 // Open the file for reading
                 fp = fopen("output/grid_array.txt", "r");
-                if (fp == NULL) {
+                if (!fp) {
                     printf("Error opening file\n");
                     break;
                 }

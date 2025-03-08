@@ -1,4 +1,4 @@
-#include "data.h"
+#include "data/data.h"
 
 #include <dirent.h>
 #include <math.h>
@@ -10,7 +10,7 @@
 
 data_t **get_dataset(const char *filename, unsigned int *dataset_length, unsigned int *inputs_length) {
     FILE *file = fopen(filename, "rb");
-    if (file == NULL) {
+    if (!file) {
         printf("Error opening %s for reading data set\n", filename);
         return NULL;
     }
