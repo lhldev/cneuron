@@ -25,6 +25,7 @@ data_t **get_dataset(const char *filename, unsigned int *dataset_length, unsigne
         size_t read_count = fread(data->inputs, sizeof(float), *inputs_length, file);
         if (read_count != *inputs_length) {
             printf("Error: Failed to read data. Maybe you haven't run 'git lfs pull'?\n");
+            return NULL;
         }
         fread(&(data->neuron_index), sizeof(unsigned int), 1, file);
 
