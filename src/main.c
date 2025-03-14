@@ -400,7 +400,7 @@ int main() {
 
     // Parameters
     float learn_rate = 0.03f;
-    int learn_amount = 100000;
+    int learn_amount = 40000;
     int log_amount = 2000;
 
     char cmd[100];

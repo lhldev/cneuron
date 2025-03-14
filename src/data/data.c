@@ -38,13 +38,14 @@ data_t **get_dataset(const char *filename, unsigned int *dataset_length, unsigne
 
 void free_dataset(data_t **dataset, unsigned int dataset_length) {
     for (unsigned int i = 0; i < dataset_length; i++) {
-        free_data(dataset[i]);
+        free(dataset[i]->inputs);
     }
     free(dataset);
 }
 
 void free_data(data_t *data) {
     free(data->inputs);
+    free(data);
 }
 
 data_t *get_data_copy(data_t* data, unsigned int inputs_length) {
@@ -52,9 +53,9 @@ data_t *get_data_copy(data_t* data, unsigned int inputs_length) {
 
     copy->neuron_index = data->neuron_index;
 
-    size_t input_size = sizeof(float) * inputs_length;
-    copy->inputs = malloc(input_size);
-    memcpy(copy->inputs, data->inputs, input_size);
+    size_t inputs_size = sizeof(float) * inputs_length;
+    copy->inputs = malloc(inputs_size);
+    memcpy(copy->inputs, data->inputs, inputs_size);
 
     return copy;
 }
@@ -69,8 +70,8 @@ void rotate_data(data_t *data, int width, int height, float angle) {
         for (int x = 0; x < width; x++) {
             int center_x = width / 2;
             int center_y = height / 2;
-            int src_x = (int)round((x - center_x) * cos_angle - (y - center_y) * sin_angle + center_x);
-            int src_y = (int)round((x - center_x) * sin_angle + (y - center_y) * cos_angle + center_y);
+            int src_x = round((x - center_x) * cos_angle + (y - center_y) * sin_angle + center_x);
+            int src_y = round((y - center_y) * cos_angle - (x - center_x) * sin_angle + center_y);
 
             if (src_x >= 0 && src_x < width && src_y >= 0 && src_y < height) {
                 new_inputs[y * width + x] = data->inputs[src_y * width + src_x];
@@ -92,18 +93,13 @@ void scale_data(data_t *data, int width, int height, float scale) {
 
     for (int y = 0; y < scale_height; y++) {
         for (int x = 0; x < scale_width; x++) {
-            int src_x = (int)round(x / scale);
-            int src_y = (int)round(y / scale);
-
-            if (src_x >= 0 && src_x < width && src_y >= 0 && src_y < height) {
-                scale_inputs[y * scale_width + x] = data->inputs[src_y * width + src_x];
-            } else {
-                scale_inputs[y * scale_width + x] = 0.0f;  // Set background color to black
-            }
+            int src_x = x / scale;
+            int src_y = y / scale;
+            scale_inputs[y * scale_width + x] = data->inputs[src_y * width + src_x];
         }
     }
-    int off_set_x = (scale_width - width) / 2;
-    int off_set_y = (scale_height - height) / 2;
+    int off_set_x = round((float)(scale_width - width) / 2);
+    int off_set_y = round((float)(scale_height - height) / 2);
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
             int scale_x = x + off_set_x;
@@ -126,11 +122,11 @@ void offset_data(data_t *data, int width, int height, float offset_x, float offs
 
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
-            float new_x = x + offset_x;
-            float new_y = y + offset_y;
+            float new_x = x - offset_x;
+            float new_y = y - offset_y;
 
-            int src_x = (int)round(new_x);
-            int src_y = (int)round(new_y);
+            int src_x = round(new_x);
+            int src_y = round(new_y);
             if (src_x >= 0 && src_x < width && src_y >= 0 && src_y < height) {
                 new_inputs[y * width + x] = data->inputs[src_y * width + src_x];
             } else {
