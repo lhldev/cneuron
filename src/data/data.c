@@ -8,28 +8,30 @@
 #include <sys/types.h>
 #include <time.h>
 
-data_t **get_dataset(const char *filename, unsigned int *dataset_length, unsigned int *inputs_length) {
+dataset_t *get_dataset(const char *filename) {
+    dataset_t *dataset = malloc(sizeof(dataset_t));
+
     FILE *file = fopen(filename, "rb");
     if (!file) {
         printf("Error opening %s for reading data set\n", filename);
         return NULL;
     }
 
-    fread(dataset_length, sizeof(unsigned int), 1, file);
-    data_t **dataset = malloc(sizeof(data_t*) * *dataset_length);
+    fread(&dataset->length, sizeof(unsigned int), 1, file);
+    dataset->datas = malloc(sizeof(data_t*) * dataset->length);
 
-    fread(inputs_length, sizeof(unsigned int), 1, file);
-    for (unsigned int i = 0; i < *dataset_length; i++) {
+    fread(&dataset->inputs_length, sizeof(unsigned int), 1, file);
+    for (unsigned int i = 0; i < dataset->length; i++) {
         data_t *data = malloc(sizeof(data_t));
-        data->inputs = malloc(sizeof(float) * *inputs_length);
-        size_t read_count = fread(data->inputs, sizeof(float), *inputs_length, file);
-        if (read_count != *inputs_length) {
+        data->inputs = malloc(sizeof(float) * dataset->inputs_length);
+        size_t read_count = fread(data->inputs, sizeof(float), dataset->inputs_length, file);
+        if (read_count != dataset->inputs_length) {
             printf("Error: Failed to read data. Maybe you haven't run 'git lfs pull'?\n");
             return NULL;
         }
         fread(&(data->neuron_index), sizeof(unsigned int), 1, file);
 
-        dataset[i] = data;
+        dataset->datas[i] = data;
     }
 
     fclose(file);
@@ -37,10 +39,11 @@ data_t **get_dataset(const char *filename, unsigned int *dataset_length, unsigne
     return dataset;
 }
 
-void free_dataset(data_t **dataset, unsigned int dataset_length) {
-    for (unsigned int i = 0; i < dataset_length; i++) {
-        free(dataset[i]->inputs);
+void free_dataset(dataset_t *dataset) {
+    for (unsigned int i = 0; i < dataset->length; i++) {
+        free(dataset->datas[i]->inputs);
     }
+    free(dataset->datas);
     free(dataset);
 }
 

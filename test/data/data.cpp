@@ -17,34 +17,27 @@ TEST(DataTest, CreateData) {
 }
 
 TEST(DataTest, GetDatasetFileNotFound) {
-    unsigned int dataset_length = 0;
-    unsigned int inputs_length = 0;
-    data_t **dataset = get_dataset("non_existent_file.dat", &dataset_length, &inputs_length);
-    EXPECT_EQ(dataset_length, 0);
-    EXPECT_EQ(inputs_length, 0);
+    dataset_t *dataset = get_dataset("non_existent_file.dat");
     ASSERT_EQ(dataset, nullptr);
 }
 
 TEST(DataTest, GetDatasetValidFile) {
-    unsigned int dataset_length = 0;
-    unsigned int inputs_length = 0;
-    data_t **dataset = get_dataset("data/mnist/mnist_train.dat", &dataset_length, &inputs_length);
+    dataset_t *dataset = get_dataset("data/mnist/mnist_train.dat");
     ASSERT_NE(dataset, nullptr);
-    ASSERT_GT(dataset_length, 0);
-    ASSERT_GT(inputs_length, 0);
+    ASSERT_GT(dataset->length, 0);
+    ASSERT_GT(dataset->inputs_length, 0);
 
-    ASSERT_NE(dataset[0], nullptr);
-    ASSERT_NE(dataset[0]->inputs, nullptr);
+    ASSERT_NE(dataset, nullptr);
+    ASSERT_NE(dataset->datas[0], nullptr);
+    ASSERT_NE(dataset->datas[0]->inputs, nullptr);
 
-    free_dataset(dataset, dataset_length);
+    free_dataset(dataset);
 }
 
 TEST(DataTest, FreeDataset) {
-    unsigned int dataset_length = 0;
-    unsigned int inputs_length = 0;
-    data_t **dataset = get_dataset("data/mnist/mnist_test.dat", &dataset_length, &inputs_length);
+    dataset_t *dataset = get_dataset("data/mnist/mnist_test.dat");
 
-    free_dataset(dataset, dataset_length);
+    free_dataset(dataset);
     // No crash
 }
 
@@ -58,22 +51,20 @@ TEST(DataTest, FreeData) {
 
 
 TEST(DataTest, CopyData) {
-    unsigned int dataset_length = 0;
-    unsigned int inputs_length = 0;
-    data_t **dataset = get_dataset("data/mnist/mnist_test.dat", &dataset_length, &inputs_length);
+    dataset_t *dataset = get_dataset("data/mnist/mnist_test.dat");
 
-    data_t *data_copy = get_data_copy(dataset[0], inputs_length);
+    data_t *data_copy = get_data_copy(dataset->datas[0], dataset->inputs_length);
     ASSERT_NE(data_copy, nullptr);
     ASSERT_NE(data_copy->inputs, nullptr);
 
-    for (int i = 0; i < inputs_length; i++) {
-        ASSERT_FLOAT_EQ(data_copy->inputs[i], dataset[0]->inputs[i]);
+    for (int i = 0; i < dataset->inputs_length; i++) {
+        ASSERT_FLOAT_EQ(data_copy->inputs[i], dataset->datas[0]->inputs[i]);
     }
 
-    ASSERT_FLOAT_EQ(data_copy->neuron_index, dataset[0]->neuron_index);
+    ASSERT_FLOAT_EQ(data_copy->neuron_index, dataset->datas[0]->neuron_index);
 
     free_data(data_copy);
-    free_dataset(dataset, inputs_length);
+    free_dataset(dataset);
 }
 
 TEST(DataTest, RotateData) {

@@ -5,9 +5,15 @@ typedef struct {
     unsigned int neuron_index;
 } data_t;
 
-data_t **get_dataset(const char *filename, unsigned int *dataset_length ,unsigned int *inputs_length);
+typedef struct {
+    unsigned int length;
+    unsigned int inputs_length;
+    data_t **datas;
+} dataset_t;
 
-void free_dataset(data_t** dataset, unsigned int dataset_length);
+dataset_t *get_dataset(const char *filename);
+
+void free_dataset(dataset_t* dataset);
 void free_data(data_t* data);
 
 data_t *get_data_copy(data_t* data, unsigned int inputs_length);
