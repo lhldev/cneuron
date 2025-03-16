@@ -1,12 +1,9 @@
 #include "data/data.h"
 
-#include <dirent.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
-#include <time.h>
 
 dataset_t *get_dataset(const char *filename) {
     dataset_t *dataset = malloc(sizeof(dataset_t));
