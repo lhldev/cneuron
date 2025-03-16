@@ -49,7 +49,7 @@ void free_data(data_t *data) {
     free(data);
 }
 
-data_t *get_data_copy(data_t* data, unsigned int inputs_length) {
+data_t *get_data_copy(const data_t* data, unsigned int inputs_length) {
     data_t *copy = malloc(sizeof(data_t));
 
     copy->neuron_index = data->neuron_index;

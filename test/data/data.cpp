@@ -124,7 +124,7 @@ TEST(DataTest, NoiseData) {
     bool same = true;
     noise_data(data, 9, 1.0f, 1.0f);
     for (int i = 0; i < 9; i++) {
-        if (data_copy->inputs[i] != data->inputs[i]){
+        if (data_copy->inputs[i] != data->inputs[i]) {
             same = false;
             break;
         }
