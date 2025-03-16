@@ -1,12 +1,23 @@
 #include "data/data.h"
 #include "network/network.h"
 
-#include <dirent.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/types.h>
-#include <time.h>
+
+float random_float(float min, float max) { return (float)rand() / (float)RAND_MAX * (max - min) + min; }
+
+void matrix_multiply(const float *a, const float *b, float *c, size_t rows_a, size_t cols_a, size_t cols_b) {
+    for (size_t col = 0; col < cols_b; ++col) {
+        for (size_t row = 0; row < rows_a; ++row) {
+            float sum = 0.0f;
+            for (size_t k = 0; k < cols_a; ++k) {
+                sum += a[k * rows_a + row] * b[col * cols_a + k]; 
+            }
+            c[col * rows_a + row] = sum;
+        }
+    }
+}
 
 layer_t *get_layer(size_t length, size_t prev_length) {
     layer_t *layer = malloc(sizeof(layer_t));
@@ -41,8 +52,11 @@ neural_network_t *get_neural_network(size_t layer_length, const size_t *layer_le
 
     for (size_t i = 0; i < layer_length; i++) {
         nn->layers[i] = get_layer(layer_lengths[i], (i == 0) ? inputs_length : layer_lengths[i - 1]);
+    }
+
+    for (size_t i = 0; i < layer_length; i++) {
         nn->layers[i]->prev_layer = (i == 0) ? NULL : nn->layers[i - 1];
-        nn->layers[i]->next_layer = (i ==  layer_length - 1) ? NULL : nn->layers[i + 1];
+        nn->layers[i]->next_layer = (i == layer_length - 1) ? NULL : nn->layers[i + 1];
     }
 
     nn->activation_function = activation_function;
@@ -70,13 +84,13 @@ void compute_network(neural_network_t *nn, const float *inputs) {
     layer_t *curr = nn->layers[0];
     while (curr != NULL) {
         if (curr->prev_layer == NULL) {
-            matrix_multiply(curr->weights, inputs, curr->weighted_input, nn->inputs_length, curr->length, 1);
+            matrix_multiply(curr->weights, inputs, curr->weighted_input, curr->length, nn->inputs_length, 1);
         }
         else {
-            matrix_multiply(curr->weights, curr->prev_layer->output, curr->weighted_input, curr->prev_layer->length, curr->length, 1);
+            matrix_multiply(curr->weights, curr->prev_layer->output, curr->weighted_input, curr->length, curr->prev_layer->length, 1);
         }
         for (size_t i = 0; i < curr->length; i++) {
-            curr->weighted_input[i] = curr->weighted_input[i] + curr->bias[i];
+            curr->weighted_input[i] += curr->bias[i];
             curr->output[i] = nn->activation_function(curr->weighted_input[i], 0);
         }
         curr = curr->next_layer;
@@ -103,8 +117,8 @@ float activation_percentage(neural_network_t *nn, size_t neuron_index) {
 
 void print_activation_percentages(neural_network_t *nn) {
     layer_t *output_layer = nn->layers[nn->length - 1];
-    float *percentages = malloc(output_layer->length * sizeof(float));
-    int *indices = malloc(output_layer->length * sizeof(int));
+    float *percentages = malloc(sizeof(float) * output_layer->length);
+    size_t *indices = malloc(sizeof(size_t) * output_layer->length);
 
     // Store the activation percentages and indices
     for (size_t i = 0; i < output_layer->length; i++) {
@@ -125,14 +139,14 @@ void print_activation_percentages(neural_network_t *nn) {
         percentages[max_idx] = percentages[i];
         percentages[i] = temp;
         // Swap indices
-        int temp_idx = indices[max_idx];
+        size_t temp_idx = indices[max_idx];
         indices[max_idx] = indices[i];
         indices[i] = temp_idx;
     }
 
     // Print the sorted percentages with neuron indices
-    for (unsigned int i = 0; i < output_layer->length; i++) {
-        printf(" (%d = %.2f%%) ", indices[i], percentages[i]);
+    for (size_t i = 0; i < output_layer->length; i++) {
+        printf(" (%zu = %.2f%%) ", indices[i], percentages[i]);
     }
 
     printf("\n");
@@ -171,133 +185,122 @@ void print_result(neural_network_t *nn) {
     }
 }
 
-void layer_learn_output(neural_network_t *nn, layer_t *previous_layer, layer_t *layer, float learn_rate, data_t *data, float (*activation_function)(float, int)) {
-    add_inputs(nn, data->inputs);
-    compute_network(nn);
-    for (unsigned int i = 0; i < layer->length; i++) {
-        float neuron_output = layer->neurons[i].output;
-        float target_output = output_neuron_expected(i, data);
+void layer_learn_output(layer_t *output_layer, float learn_rate, const data_t *data, float (*activation_function)(float, int)) {
+    layer_t *prev_layer = output_layer->prev_layer;
+    for (size_t i = 0; i < output_layer->length; i++) {
+        float neuron_output = output_layer->output[i];
+        float target_output = output_expected(i, data);
 
-        layer->neurons[i].delta = 2 * (neuron_output - target_output) * activation_function(layer->neurons[i].weighted_input, 1);
+        output_layer->delta[i] = 2 * (neuron_output - target_output) * activation_function(output_layer->weighted_input[i], 1);
 
-        for (int j = 0; j < layer->neurons[i].num_weights; j++) {
-            float input = previous_layer->neurons[j].output;
-            layer->neurons[i].weights[j] -= layer->neurons[i].delta * input * learn_rate;
+        for (size_t j = 0; j < prev_layer->length; j++) {
+            output_layer->weights[j * output_layer->length + i] -= output_layer->delta[i] * prev_layer->output[j] * learn_rate;
         }
 
-        layer->neurons[i].bias -= layer->neurons[i].delta * learn_rate;
+        output_layer->bias[i] -= output_layer->delta[i] * learn_rate;
     }
 }
 
-void layer_learn_intermediate(layer_t *previous_layer, layer_t *layer, layer_t *next_layer, float learn_rate, float (*activation_function)(float, int)) {
-    for (unsigned int i = 0; i < layer->length; i++) {
-        layer->neurons[i].delta = 0.0f;
-        for (unsigned int j = 0; j < next_layer->length; j++) {
-            float weight_next_neuron = next_layer->neurons[j].weights[i];
-            float delta_next_neuron = next_layer->neurons[j].delta;
-            layer->neurons[i].delta += weight_next_neuron * delta_next_neuron * activation_function(layer->neurons[i].weighted_input, 1);
+void layer_learn_intermediate(layer_t *curr_layer, float learn_rate, const data_t *data, size_t inputs_length, float (*activation_function)(float, int)) {
+    layer_t *prev_layer = curr_layer->prev_layer;
+    layer_t *next_layer = curr_layer->next_layer;
+    for (size_t i = 0; i < curr_layer->length; i++) {
+        curr_layer->delta[i] = 0.0f;
+        for (size_t j = 0; j < next_layer->length; j++) {
+            float weight_next_neuron = next_layer->weights[i * next_layer->length + j];
+            float delta_next_neuron = next_layer->delta[j];
+            curr_layer->delta[i] += weight_next_neuron * delta_next_neuron * activation_function(curr_layer->weighted_input[i], 1);
         }
 
-        for (int j = 0; j < layer->neurons[i].num_weights; j++) {
-            float input = previous_layer->neurons[j].output;
-            layer->neurons[i].weights[j] -= layer->neurons[i].delta * input * learn_rate;
+        if (prev_layer != NULL) {
+            for (size_t j = 0; j < prev_layer->length; j++) {
+                float input = prev_layer->output[j];
+                curr_layer->weights[j * curr_layer->length + i] -= curr_layer->delta[i] * input * learn_rate;
+            }
+        }
+        else {
+            for (size_t j = 0; j < inputs_length; j++) {
+                float input = data->inputs[j];
+                curr_layer->weights[j * curr_layer->length + i] -= curr_layer->delta[i] * input * learn_rate;
+            }
         }
 
-        layer->neurons[i].bias -= layer->neurons[i].delta * learn_rate;
+        curr_layer->bias[i] -= curr_layer->delta[i] * learn_rate;
     }
 }
 
-void learn(neural_network_t *nn, float learn_rate, data_t *data) {
-    layer_learn_output(nn, (nn->num_hidden_layer == 0) ? &nn->input_layer : &nn->hidden_layers[nn->num_hidden_layer - 1], &nn->output_layer, learn_rate, data, nn->activation_function);
-    for (int j = nn->num_hidden_layer - 1; j >= 0; j--) {
-        layer_learn_intermediate((j == 0) ? &nn->input_layer : &nn->hidden_layers[j - 1], &nn->hidden_layers[j], ((unsigned int)j == nn->num_hidden_layer - 1) ? &nn->output_layer : &nn->hidden_layers[j + 1], learn_rate, nn->activation_function);
+void learn(neural_network_t *nn, float learn_rate, const data_t *data) {
+    compute_network(nn, data->inputs);
+    for (size_t i = 0; i < nn->length; i++) {
+        if (i == 0) {
+            layer_learn_output(nn->layers[nn->length - 1], learn_rate, data, nn->activation_function);
+        }
+        else {
+            layer_learn_intermediate(nn->layers[nn->length - i - 1], learn_rate, data, nn->inputs_length, nn->activation_function);
+        }
     }
 }
 
-float random_float(float min, float max) { return (float)rand() / (float)RAND_MAX * (max - min) + min; }
-
-void save_network(const char *filename, neural_network_t *network) {
+void save_network(const char *filename, neural_network_t *nn) {
     FILE *file = fopen(filename, "wb");
     if (!file) {
         printf("Error opening file for writing\n");
         return;
     }
 
-    fwrite(&(network->input_layer.length), sizeof(unsigned int), 1, file);
-    fwrite(&(network->num_hidden_layer), sizeof(unsigned int), 1, file);
+    fwrite(&(nn->inputs_length), sizeof(size_t), 1, file);
+    fwrite(&(nn->length), sizeof(size_t), 1, file);
 
-    for (unsigned int i = 0; i < network->num_hidden_layer; i++) {
-        fwrite(&(network->hidden_layers[i].length), sizeof(int), 1, file);
-        for (unsigned int j = 0; j < network->hidden_layers[i].length; j++) {
-            fwrite(network->hidden_layers[i].neurons[j].weights, sizeof(float), network->hidden_layers[i].neurons[j].num_weights, file);
-            fwrite(&(network->hidden_layers[i].neurons[j].bias), sizeof(float), 1, file);
-        }
-    }
-
-    // Output layer
-    fwrite(&(network->output_layer.length), sizeof(unsigned int), 1, file);
-    for (unsigned int i = 0; i < network->output_layer.length; i++) {
-        fwrite(network->output_layer.neurons[i].weights, sizeof(float), network->output_layer.neurons[i].num_weights, file);
-        fwrite(&(network->output_layer.neurons[i].bias), sizeof(float), 1, file);
+    for (size_t i = 0; i < nn->length; i++) {
+        fwrite(&(nn->layers[i]->length), sizeof(size_t), 1, file);
+        fwrite(nn->layers[i]->weights, sizeof(float), nn->layers[i]->length * ((i == 0) ? nn->inputs_length : nn->layers[i]->prev_layer->length), file);
+        fwrite(nn->layers[i]->bias, sizeof(float), nn->layers[i]->length, file);
     }
 
     fclose(file);
 }
 
-void load_network(const char *filename, neural_network_t *network) {
+void load_network(const char *filename, neural_network_t *nn) {
     FILE *file = fopen(filename, "rb");
     if (!file) {
         printf("Error opening file for reading\n");
         return;
     }
 
-    unsigned int check_val = 0;
-    fread(&check_val, sizeof(unsigned int), 1, file);
-    if (check_val != network->input_layer.length) {
-        printf("Number of input layer not compatiable with save file, read: %d\n", check_val);
+    size_t check_val = 0;
+    fread(&check_val, sizeof(size_t), 1, file);
+    if (check_val != nn->inputs_length) {
+        printf("Number of input layer not compatiable with save file, read: %zu\n", check_val);
         return;
     }
-    fread(&check_val, sizeof(unsigned int), 1, file);
 
-    if (check_val != network->num_hidden_layer) {
-        printf("Number of hidden layer not compatable with save file, read: %d\n", check_val);
+    fread(&check_val, sizeof(size_t), 1, file);
+    if (check_val != nn->length) {
+        printf("Number of hidden layer not compatable with save file, read: %zu\n", check_val);
         return;
     }
-    for (unsigned int i = 0; i < network->num_hidden_layer; i++) {
-        check_val = 0;
-        fread(&check_val, sizeof(unsigned int), 1, file);
-        if (check_val != network->hidden_layers[i].length) {
-            printf("Number of hidden layer neuron not compatable with save file, read: %d\n", check_val);
+
+    for (size_t i = 0; i < nn->length; i++) {
+        fread(&check_val, sizeof(size_t), 1, file);
+        if (check_val != nn->layers[i]->length) {
+            printf("Number of hidden layer neuron not compatable with save file, read: %zu\n", check_val);
             return;
         }
-        for (unsigned int j = 0; j < network->hidden_layers[i].length; j++) {
-            fread(network->hidden_layers[i].neurons[j].weights, sizeof(float), network->hidden_layers[i].neurons[j].num_weights, file);
-            fread(&(network->hidden_layers[i].neurons[j].bias), sizeof(float), 1, file);
-        }
+
+        fread(nn->layers[i]->weights, sizeof(float), nn->layers[i]->length * ((i == 0) ? nn->inputs_length : nn->layers[i]->prev_layer->length), file);
+        fread(nn->layers[i]->bias, sizeof(float), nn->layers[i]->length, file);
     }
 
-    // Output layer
-    check_val = 0;
-    fread(&check_val, sizeof(unsigned int), 1, file);
-    if (check_val != network->output_layer.length) {
-        printf("Number of output layer neuron not compatable with save file, read: %d\n", check_val);
-        return;
-    }
-    for (unsigned int i = 0; i < network->output_layer.length; i++) {
-        fread(network->output_layer.neurons[i].weights, sizeof(float), network->output_layer.neurons[i].num_weights, file);
-        fread(&(network->output_layer.neurons[i].bias), sizeof(float), 1, file);
-    }
     fclose(file);
 }
 
-float test_network_percent(neural_network_t *nn, dataset_t* test_dataset) {
+float test_network_percent(neural_network_t *nn, const dataset_t* test_dataset) {
     int correct = 0;
-    for (unsigned int i = 0; i < test_dataset->length; i++) {
-        add_inputs(nn, test_dataset->datas[i]->inputs);
-        compute_network(nn);
-        unsigned int max = 0;
+    for (size_t i = 0; i < test_dataset->length; i++) {
+        compute_network(nn, test_dataset->datas[i]->inputs);
+        size_t max = 0;
         for (int i = 1; i < 10; i++) {
-            if (output_neuron_percent_activate(nn, i) > output_neuron_percent_activate(nn, max)) {
+            if (activation_percentage(nn, i) > activation_percentage(nn, max)) {
                 max = i;
             }
         }
@@ -308,25 +311,3 @@ float test_network_percent(neural_network_t *nn, dataset_t* test_dataset) {
 
     return (float)correct * 100.0f / (float)test_dataset->length;
 }
-
-void train(neural_network_t *network, dataset_t *dataset, dataset_t *test_dataset, float learn_rate, int learn_amount, int log_amount) {
-    clock_t start_time = clock();
-    for (int i = 0; i < learn_amount; i++) {
-        if (i % log_amount == 0 && i != 0) {
-            float new_cost = cost(network, test_dataset, 100);
-            clock_t elapsed_ms = clock() - start_time;
-            float elapsed_s = (float)elapsed_ms / CLOCKS_PER_SEC;
-            float speed = (float)log_amount / elapsed_s;
-            printf("Learned: %d, cost: %f, elapsed time: %.2fs, speed: %.2f Data/s\n", i, new_cost, elapsed_s, speed);
-            start_time = clock();
-        }
-        data_t *data =  get_data_copy(dataset->datas[rand() % dataset->length], IMAGE_SIZE * IMAGE_SIZE);
-        rotate_data(data, IMAGE_SIZE, IMAGE_SIZE, random_float(-5.0f, 5.0f));
-        scale_data(data, IMAGE_SIZE, IMAGE_SIZE, random_float(0.9f, 1.1f));
-        offset_data(data, IMAGE_SIZE, IMAGE_SIZE, random_float(-3.0f, 3.0f), random_float(-3.0f, 3.0f));
-        noise_data(data, IMAGE_SIZE * IMAGE_SIZE, 0.3f, 0.08f);
-        learn(network, learn_rate, data);
-        free_data(data);
-    }
-}
-
