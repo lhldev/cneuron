@@ -6,10 +6,12 @@ extern "C" {
 
 TEST(DataTest, CreateData) {
     data_t *data = (data_t *)malloc(sizeof(data_t));
-    data->inputs = (float *)malloc(sizeof(float) * 10);
+
+    size_t inputs_length = 10;
+    data->inputs = (float *)malloc(sizeof(float) * inputs_length);
     EXPECT_NE(data, nullptr);
     EXPECT_NE(data->inputs, nullptr);
-    for (int i = 0; i < 10; i++) {
+    for (size_t i = 0; i < inputs_length; i++) {
         data->inputs[i] = static_cast<float>(i); 
     }
     free_data(data);
@@ -57,7 +59,7 @@ TEST(DataTest, CopyData) {
     ASSERT_NE(data_copy, nullptr);
     ASSERT_NE(data_copy->inputs, nullptr);
 
-    for (int i = 0; i < dataset->inputs_length; i++) {
+    for (size_t i = 0; i < dataset->inputs_length; i++) {
         ASSERT_FLOAT_EQ(data_copy->inputs[i], dataset->datas[0]->inputs[i]);
     }
 
@@ -69,8 +71,10 @@ TEST(DataTest, CopyData) {
 
 TEST(DataTest, RotateData) {
     data_t *data = (data_t *)malloc(sizeof(data_t));
-    data->inputs = (float *)malloc(sizeof(float) * 9);
-    for (int i = 0; i < 9; i++) {
+
+    size_t inputs_length = 9;
+    data->inputs = (float *)malloc(sizeof(float) * inputs_length);
+    for (size_t i = 0; i < inputs_length; i++) {
         data->inputs[i] = static_cast<float>(i) + 1.0f;
     }
 
@@ -84,8 +88,10 @@ TEST(DataTest, RotateData) {
 
 TEST(DataTest, ScaleData) {
     data_t *data = (data_t *)malloc(sizeof(data_t));
-    data->inputs = (float *)malloc(sizeof(float) * 9);
-    for (int i = 0; i < 9; i++) {
+
+    size_t inputs_length = 9;
+    data->inputs = (float *)malloc(sizeof(float) * inputs_length);
+    for (size_t i = 0; i < inputs_length; i++) {
         data->inputs[i] = i + 1.0f;
     }
 
@@ -99,8 +105,10 @@ TEST(DataTest, ScaleData) {
 
 TEST(DataTest, OffsetData) {
     data_t *data = (data_t *)malloc(sizeof(data_t));
-    data->inputs = (float *)malloc(sizeof(float) * 9);
-    for (int i = 0; i < 9; i++) {
+
+    size_t inputs_length = 9;
+    data->inputs = (float *)malloc(sizeof(float) * inputs_length);
+    for (size_t i = 0; i < inputs_length; i++) {
         data->inputs[i] = i + 1.0f;
     }
 
@@ -115,28 +123,24 @@ TEST(DataTest, OffsetData) {
 
 TEST(DataTest, NoiseData) {
     data_t *data = (data_t *)malloc(sizeof(data_t));
-    data->inputs = (float *)malloc(sizeof(float) * 9);
-    for (int i = 0; i < 9; i++) {
+
+    size_t inputs_length = 9;
+    data->inputs = (float *)malloc(sizeof(float) * inputs_length);
+    for (size_t i = 0; i < inputs_length; i++) {
         data->inputs[i] = i + 1.0f;
     }
-    data_t *data_copy  = get_data_copy(data, 9);
+    data_t *data_copy  = get_data_copy(data, inputs_length);
 
     bool same = true;
-    noise_data(data, 9, 1.0f, 1.0f);
-    for (int i = 0; i < 9; i++) {
+    noise_data(data, inputs_length, 1.0f, 1.0f);
+    for (size_t i = 0; i < inputs_length; i++) {
         if (data_copy->inputs[i] != data->inputs[i]) {
             same = false;
             break;
         }
     }
-    ASSERT_EQ(same, false);
+    ASSERT_FALSE(same);
 
     free_data(data);
     free_data(data_copy);
-}
-
-
-int main(int argc, char **argv) {
-    ::testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
 }

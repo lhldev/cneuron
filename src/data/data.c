@@ -11,6 +11,7 @@ dataset_t *get_dataset(const char *filename) {
     FILE *file = fopen(filename, "rb");
     if (!file) {
         printf("Error opening %s for reading data set\n", filename);
+        free(dataset);
         return NULL;
     }
 
@@ -38,7 +39,7 @@ dataset_t *get_dataset(const char *filename) {
 
 void free_dataset(dataset_t *dataset) {
     for (unsigned int i = 0; i < dataset->length; i++) {
-        free(dataset->datas[i]->inputs);
+        free_data(dataset->datas[i]);
     }
     free(dataset->datas);
     free(dataset);

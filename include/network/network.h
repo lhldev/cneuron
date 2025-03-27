@@ -4,16 +4,14 @@
 
 #include <stddef.h>
 
-typedef struct layer layer_t;
-
 typedef struct layer {
     float *delta;   // for backpropagation
     float *weighted_input;
     float *weights; // Column major matrix
     float *bias;
     float *output;
-    layer_t *prev_layer;
-    layer_t *next_layer;
+    struct layer *prev_layer;
+    struct layer *next_layer;
     size_t length;
 } layer_t;
 
