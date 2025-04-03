@@ -1,15 +1,15 @@
-#include "data/data.h"
-#include "network/network.h"
-
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 
+#include "data/data.h"
+#include "network/network.h"
+
 #define IMAGE_SIZE 28
 
 float sigmoid(float val, int is_deravative) {
-    float result = 1.0f / (1.0f + exp(-val));
+    float result = 1.0f / (1.0f + expf(-val));
     if (is_deravative == 1) {
         return result * (1.0f - result);
     }
@@ -34,7 +34,7 @@ void train(neural_network_t *nn, dataset_t *dataset, dataset_t *test_dataset, fl
             printf("Learned: %d, cost: %f, elapsed time: %.2fs, speed: %.2f Data/s\n", i, new_cost, elapsed_s, speed);
             start_time = clock();
         }
-        data_t *data =  get_data_copy(dataset->datas[rand() % dataset->length], IMAGE_SIZE * IMAGE_SIZE);
+        data_t *data = get_data_copy(dataset->datas[rand() % dataset->length], IMAGE_SIZE * IMAGE_SIZE);
         rotate_data(data, IMAGE_SIZE, IMAGE_SIZE, random_float(-5.0f, 5.0f));
         scale_data(data, IMAGE_SIZE, IMAGE_SIZE, random_float(0.9f, 1.1f));
         offset_data(data, IMAGE_SIZE, IMAGE_SIZE, random_float(-3.0f, 3.0f), random_float(-3.0f, 3.0f));

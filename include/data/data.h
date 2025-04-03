@@ -13,10 +13,10 @@ typedef struct {
 
 dataset_t *get_dataset(const char *filename);
 
-void free_dataset(dataset_t* dataset);
-void free_data(data_t* data);
+void free_dataset(dataset_t *dataset);
+void free_data(data_t *data);
 
-data_t *get_data_copy(const data_t* data, unsigned int inputs_length);
+data_t *get_data_copy(const data_t *data, unsigned int inputs_length);
 
 void rotate_data(data_t *data, int width, int height, float angle);
 void scale_data(data_t *data, int width, int height, float scale);

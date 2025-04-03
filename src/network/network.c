@@ -1,9 +1,10 @@
-#include "data/data.h"
 #include "network/network.h"
 
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+#include "data/data.h"
 
 float random_float(float min, float max) { return (float)rand() / (float)RAND_MAX * (max - min) + min; }
 
@@ -12,7 +13,7 @@ void matrix_multiply(const float *a, const float *b, float *c, size_t rows_a, si
         for (size_t row = 0; row < rows_a; ++row) {
             float sum = 0.0f;
             for (size_t k = 0; k < cols_a; ++k) {
-                sum += a[k * rows_a + row] * b[col * cols_a + k]; 
+                sum += a[k * rows_a + row] * b[col * cols_a + k];
             }
             c[col * rows_a + row] = sum;
         }
@@ -35,10 +36,10 @@ layer_t *get_layer(size_t length, size_t prev_length) {
     layer->weighted_input = malloc(sizeof(float) * length);
 
     for (size_t i = 0; i < length; i++) {
-        layer->delta[i] = 0.0f; 
-        layer->bias[i] = 0.0f; 
-        layer->output[i] = 0.0f; 
-        layer->weighted_input[i] = 0.0f; 
+        layer->delta[i] = 0.0f;
+        layer->bias[i] = 0.0f;
+        layer->output[i] = 0.0f;
+        layer->weighted_input[i] = 0.0f;
     }
 
     return layer;
@@ -85,8 +86,7 @@ void compute_network(neural_network_t *nn, const float *inputs) {
     while (curr != NULL) {
         if (curr->prev_layer == NULL) {
             matrix_multiply(curr->weights, inputs, curr->weighted_input, curr->length, nn->inputs_length, 1);
-        }
-        else {
+        } else {
             matrix_multiply(curr->weights, curr->prev_layer->output, curr->weighted_input, curr->length, curr->prev_layer->length, 1);
         }
         for (size_t i = 0; i < curr->length; i++) {
@@ -97,7 +97,7 @@ void compute_network(neural_network_t *nn, const float *inputs) {
     }
 }
 
-float activation_percentage(neural_network_t *nn, size_t neuron_index) {
+float softmax(neural_network_t *nn, size_t neuron_index) {
     float sum = 0.0f;
     float max_output = -INFINITY;
 
@@ -109,10 +109,10 @@ float activation_percentage(neural_network_t *nn, size_t neuron_index) {
     }
 
     for (size_t i = 0; i < output_layer->length; i++) {
-        sum += exp(output_layer->output[i] - max_output);
+        sum += expf(output_layer->output[i] - max_output);
     }
 
-    return exp(output_layer->output[neuron_index] - max_output) / sum * 100.0f;
+    return expf(output_layer->output[neuron_index] - max_output) / sum * 100.0f;
 }
 
 void print_activation_percentages(neural_network_t *nn) {
@@ -122,7 +122,7 @@ void print_activation_percentages(neural_network_t *nn) {
 
     // Store the activation percentages and indices
     for (size_t i = 0; i < output_layer->length; i++) {
-        percentages[i] = activation_percentage(nn, i);
+        percentages[i] = softmax(nn, i);
         indices[i] = i;
     }
 
@@ -217,8 +217,7 @@ void layer_learn_intermediate(layer_t *curr_layer, float learn_rate, const data_
                 float input = prev_layer->output[j];
                 curr_layer->weights[j * curr_layer->length + i] -= curr_layer->delta[i] * input * learn_rate;
             }
-        }
-        else {
+        } else {
             for (size_t j = 0; j < inputs_length; j++) {
                 float input = data->inputs[j];
                 curr_layer->weights[j * curr_layer->length + i] -= curr_layer->delta[i] * input * learn_rate;
@@ -234,8 +233,7 @@ void learn(neural_network_t *nn, float learn_rate, const data_t *data) {
     for (size_t i = 0; i < nn->length; i++) {
         if (i == 0) {
             layer_learn_output(nn->layers[nn->length - 1], learn_rate, data, nn->activation_function);
-        }
-        else {
+        } else {
             layer_learn_intermediate(nn->layers[nn->length - i - 1], learn_rate, data, nn->inputs_length, nn->activation_function);
         }
     }
@@ -294,13 +292,13 @@ void load_network(const char *filename, neural_network_t *nn) {
     fclose(file);
 }
 
-float test_network_percent(neural_network_t *nn, const dataset_t* test_dataset) {
+float test_network_percent(neural_network_t *nn, const dataset_t *test_dataset) {
     int correct = 0;
     for (size_t i = 0; i < test_dataset->length; i++) {
         compute_network(nn, test_dataset->datas[i]->inputs);
         size_t max = 0;
         for (int i = 1; i < 10; i++) {
-            if (activation_percentage(nn, i) > activation_percentage(nn, max)) {
+            if (softmax(nn, i) > softmax(nn, max)) {
                 max = i;
             }
         }

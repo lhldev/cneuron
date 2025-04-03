@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
 extern "C" {
-    #include "data/data.h"
+#include "data/data.h"
 }
 
 TEST(DataTest, CreateData) {
@@ -12,7 +12,7 @@ TEST(DataTest, CreateData) {
     EXPECT_NE(data, nullptr);
     EXPECT_NE(data->inputs, nullptr);
     for (size_t i = 0; i < inputs_length; i++) {
-        data->inputs[i] = static_cast<float>(i); 
+        data->inputs[i] = static_cast<float>(i);
     }
     free_data(data);
     // No crash
@@ -50,7 +50,6 @@ TEST(DataTest, FreeData) {
     free_data(data);
     // No crash
 }
-
 
 TEST(DataTest, CopyData) {
     dataset_t *dataset = get_dataset("data/mnist/mnist_test.dat");
@@ -129,7 +128,7 @@ TEST(DataTest, NoiseData) {
     for (size_t i = 0; i < inputs_length; i++) {
         data->inputs[i] = i + 1.0f;
     }
-    data_t *data_copy  = get_data_copy(data, inputs_length);
+    data_t *data_copy = get_data_copy(data, inputs_length);
 
     bool same = true;
     noise_data(data, inputs_length, 1.0f, 1.0f);

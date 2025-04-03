@@ -16,7 +16,7 @@ dataset_t *get_dataset(const char *filename) {
     }
 
     fread(&dataset->length, sizeof(unsigned int), 1, file);
-    dataset->datas = malloc(sizeof(data_t*) * dataset->length);
+    dataset->datas = malloc(sizeof(data_t *) * dataset->length);
 
     fread(&dataset->inputs_length, sizeof(unsigned int), 1, file);
     for (unsigned int i = 0; i < dataset->length; i++) {
@@ -50,7 +50,7 @@ void free_data(data_t *data) {
     free(data);
 }
 
-data_t *get_data_copy(const data_t* data, unsigned int inputs_length) {
+data_t *get_data_copy(const data_t *data, unsigned int inputs_length) {
     data_t *copy = malloc(sizeof(data_t));
 
     copy->neuron_index = data->neuron_index;
@@ -151,4 +151,3 @@ void noise_data(data_t *data, unsigned int inputs_length, float noise_factor, fl
         }
     }
 }
-
