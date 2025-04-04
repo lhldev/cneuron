@@ -112,7 +112,7 @@ float softmax(neural_network_t *nn, size_t neuron_index) {
         sum += expf(output_layer->output[i] - max_output);
     }
 
-    return expf(output_layer->output[neuron_index] - max_output) / sum * 100.0f;
+    return expf(output_layer->output[neuron_index] - max_output) / sum;
 }
 
 void print_activation_percentages(neural_network_t *nn) {
@@ -122,7 +122,7 @@ void print_activation_percentages(neural_network_t *nn) {
 
     // Store the activation percentages and indices
     for (size_t i = 0; i < output_layer->length; i++) {
-        percentages[i] = softmax(nn, i);
+        percentages[i] = softmax(nn, i) * 100.0f;
         indices[i] = i;
     }
 
@@ -153,14 +153,6 @@ void print_activation_percentages(neural_network_t *nn) {
 
     free(percentages);
     free(indices);
-}
-
-float output_expected(size_t neuron_index, const data_t *data) {
-    if (data->neuron_index == neuron_index) {
-        return 1.0f;
-    } else {
-        return 0.0f;
-    }
 }
 
 float cost(neural_network_t *nn, const dataset_t *test_dataset, size_t num_test) {

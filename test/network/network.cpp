@@ -130,3 +130,22 @@ TEST(NetworkTest, ComputeNetwork) {
     free_neural_network(nn);
     free(layer_lengths);
 }
+
+TEST(NetworkTest, Softmax) {
+    size_t layer_length = 1;
+    size_t inputs_length = 1;
+    size_t *layer_lengths = (size_t *)malloc(sizeof(size_t) * layer_length);
+    layer_lengths[0] = 3;
+    neural_network_t *nn = get_neural_network(layer_length, layer_lengths, inputs_length, &sigmoid);
+
+    nn->layers[0]->output[0] = 0.2f;
+    nn->layers[0]->output[1] = 0.3f;
+    nn->layers[0]->output[2] = 0.5f;
+
+    ASSERT_FLOAT_EQ(softmax(nn, 0), 0.28943311f);
+    ASSERT_FLOAT_EQ(softmax(nn, 1), 0.31987305f);
+    ASSERT_FLOAT_EQ(softmax(nn, 2), 0.39069383f);
+
+    free_neural_network(nn);
+    free(layer_lengths);
+}

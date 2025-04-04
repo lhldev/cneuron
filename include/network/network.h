@@ -39,8 +39,6 @@ float softmax(neural_network_t *nn, size_t neuron_index);
 
 void print_activation_percentages(neural_network_t *nn);
 
-float output_expected(size_t neuron_index, const data_t *data);
-
 float cost(neural_network_t *nn, const dataset_t *test_dataset, size_t num_test);
 
 void layer_learn_output(layer_t *layer, float learn_rate, const data_t *data, float (*activation_function)(float, int));

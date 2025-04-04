@@ -143,3 +143,13 @@ TEST(DataTest, NoiseData) {
     free_data(data);
     free_data(data_copy);
 }
+
+TEST(DataTest, OutputExpected) {
+    data_t *data = (data_t *)malloc(sizeof(data_t));
+    data->neuron_index = 1;
+
+    ASSERT_FLOAT_EQ(output_expected(0, data), 0.0f);
+    ASSERT_FLOAT_EQ(output_expected(1, data), 1.0f);
+
+    free(data);
+}
