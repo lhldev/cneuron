@@ -149,3 +149,133 @@ TEST(NetworkTest, Softmax) {
     free_neural_network(nn);
     free(layer_lengths);
 }
+
+// Output layer only
+TEST(NetworkTest, LearnSingleLayer) {
+    // Create data
+    dataset_t *dataset = (dataset_t *)malloc(sizeof(dataset_t)); 
+    dataset->length = 4;
+    data_t **datas = (data_t **)malloc(sizeof(data_t *) * dataset->length);
+    dataset->datas = datas;
+    dataset->inputs_length = 2;
+
+    for (size_t i = 0; i < dataset->length; i++) {
+        dataset->datas[i] = (data_t *)malloc(sizeof(data_t));
+        dataset->datas[i]->inputs = (float*)malloc(sizeof(float) * dataset->inputs_length);
+    }
+
+    // OR gate
+    dataset->datas[1]->inputs[0] = 0.0f;
+    dataset->datas[1]->inputs[1] = 0.0f;
+    dataset->datas[1]->expected_index =  0;
+
+    dataset->datas[0]->inputs[0] = 1.0f;
+    dataset->datas[0]->inputs[1] = 1.0f;
+    dataset->datas[0]->expected_index =  1;
+
+    dataset->datas[2]->inputs[0] = 0.0f;
+    dataset->datas[2]->inputs[1] = 1.0f;
+    dataset->datas[2]->expected_index =  1;
+
+    dataset->datas[3]->inputs[0] = 1.0f;
+    dataset->datas[3]->inputs[1] = 0.0f;
+    dataset->datas[3]->expected_index =  1;
+
+    // Create network
+    size_t layer_length = 1;
+    size_t *layer_lengths = (size_t *)malloc(sizeof(size_t) * layer_length);
+    layer_lengths[0] = 2;
+    neural_network_t *nn = get_neural_network(layer_length, layer_lengths, dataset->inputs_length, &sigmoid);
+
+    for (size_t i = 0; i < 50000; i++) {
+        for (size_t j = 0; j < dataset->length; j++) {
+            learn(nn, 0.03f, dataset->datas[j]);
+        }
+        if (i % 10000 == 0) {
+            printf("Single layer learn cost: %f\n", cost(nn, dataset, dataset->length));
+        }
+    }
+
+    ASSERT_LE(cost(nn, dataset, dataset->length), 0.05);
+    ASSERT_GE(test_network_percent(nn, dataset), 90.0f);
+
+    free_dataset(dataset);
+    free_neural_network(nn);
+    free(layer_lengths);
+}
+
+TEST(NetworkTest, LearnTests) {
+    // Create data
+    dataset_t *dataset = (dataset_t *)malloc(sizeof(dataset_t)); 
+    dataset->length = 4;
+    data_t **datas = (data_t **)malloc(sizeof(data_t *) * dataset->length);
+    dataset->datas = datas;
+    dataset->inputs_length = 2;
+
+    for (size_t i = 0; i < dataset->length; i++) {
+        dataset->datas[i] = (data_t *)malloc(sizeof(data_t));
+        dataset->datas[i]->inputs = (float*)malloc(sizeof(float) * dataset->inputs_length);
+    }
+
+    // XOR gate
+    dataset->datas[0]->inputs[0] = 1.0f;
+    dataset->datas[0]->inputs[1] = 1.0f;
+    dataset->datas[0]->expected_index =  0;
+
+    dataset->datas[1]->inputs[0] = 0.0f;
+    dataset->datas[1]->inputs[1] = 0.0f;
+    dataset->datas[1]->expected_index =  0;
+
+    dataset->datas[2]->inputs[0] = 0.0f;
+    dataset->datas[2]->inputs[1] = 1.0f;
+    dataset->datas[2]->expected_index =  1;
+
+    dataset->datas[3]->inputs[0] = 1.0f;
+    dataset->datas[3]->inputs[1] = 0.0f;
+    dataset->datas[3]->expected_index =  1;
+
+    // Multi layer test
+    size_t layer_length = 2;
+    size_t *layer_lengths = (size_t *)malloc(sizeof(size_t) * layer_length);
+    layer_lengths[0] = 2;
+    layer_lengths[1] = 2;
+    neural_network_t *nn = get_neural_network(layer_length, layer_lengths, dataset->inputs_length, &sigmoid);
+
+    for (size_t i = 0; i < 500000; i++) {
+        for (size_t j = 0; j < dataset->length; j++) {
+            learn(nn, 0.003f, dataset->datas[j]);
+        }
+        if (i % 100000 == 0) {
+            printf("Multi layer learn cost: %f\n", cost(nn, dataset, dataset->length));
+        }
+    }
+
+    ASSERT_LE(cost(nn, dataset, dataset->length), 0.05);
+    ASSERT_GE(test_network_percent(nn, dataset), 90.0f);
+
+    free_neural_network(nn);
+    free(layer_lengths);
+
+    // Non-linearly separable test
+    layer_length = 1;
+    layer_lengths = (size_t *)malloc(sizeof(size_t) * layer_length);
+    layer_lengths[0] = 2;
+    nn = get_neural_network(layer_length, layer_lengths, dataset->inputs_length, &sigmoid);
+
+
+    for (size_t i = 0; i < 50000; i++) {
+        for (size_t j = 0; j < dataset->length; j++) {
+            learn(nn, 0.03f, dataset->datas[j]);
+        }
+        if (i % 10000 == 0) {
+            printf("Non-linearly separable learn cost: %f\n", cost(nn, dataset, dataset->length));
+        }
+    }
+
+    ASSERT_GE(cost(nn, dataset, dataset->length), 0.05);
+    ASSERT_LE(test_network_percent(nn, dataset), 90.0f);
+
+    free_neural_network(nn);
+    free(layer_lengths);
+    free_dataset(dataset);
+}

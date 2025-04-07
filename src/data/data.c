@@ -27,7 +27,7 @@ dataset_t *get_dataset(const char *filename) {
             printf("Error: Failed to read data. Maybe you haven't run 'git lfs pull'?\n");
             return NULL;
         }
-        fread(&(data->neuron_index), sizeof(size_t), 1, file);
+        fread(&(data->expected_index), sizeof(size_t), 1, file);
 
         dataset->datas[i] = data;
     }
@@ -53,7 +53,7 @@ void free_data(data_t *data) {
 data_t *get_data_copy(const data_t *data, size_t inputs_length) {
     data_t *copy = malloc(sizeof(data_t));
 
-    copy->neuron_index = data->neuron_index;
+    copy->expected_index = data->expected_index;
 
     size_t inputs_size = sizeof(float) * inputs_length;
     copy->inputs = malloc(inputs_size);
@@ -152,8 +152,8 @@ void noise_data(data_t *data, size_t inputs_length, float noise_factor, float pr
     }
 }
 
-float output_expected(size_t neuron_index, const data_t *data) {
-    if (data->neuron_index == neuron_index) {
+float output_expected(size_t expected_index, const data_t *data) {
+    if (data->expected_index == expected_index) {
         return 1.0f;
     } else {
         return 0.0f;

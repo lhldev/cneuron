@@ -4,7 +4,7 @@
 
 typedef struct {
     float *inputs;
-    size_t neuron_index;
+    size_t expected_index;
 } data_t;
 
 typedef struct {
@@ -25,4 +25,4 @@ void scale_data(data_t *data, int width, int height, float scale);
 void offset_data(data_t *data, int width, int height, float offset_x, float offset_y);
 void noise_data(data_t *data, size_t inputs_length, float noise_factor, float probability);
 
-float output_expected(size_t neuron_index, const data_t *data);
+float output_expected(size_t expected_index, const data_t *data);

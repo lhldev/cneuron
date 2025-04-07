@@ -41,8 +41,7 @@ void print_activation_percentages(neural_network_t *nn);
 
 float cost(neural_network_t *nn, const dataset_t *test_dataset, size_t num_test);
 
-void layer_learn_output(layer_t *layer, float learn_rate, const data_t *data, float (*activation_function)(float, int));
-void layer_learn_intermediate(layer_t *layer, float learn_rate, const data_t *data, size_t inputs_length, float (*activation_function)(float, int));
+void layer_learn(neural_network_t *nn, size_t layer_index, float learn_rate, const data_t *data, float (*activation_function)(float, int));
 void learn(neural_network_t *nn, float learn_rate, const data_t *data);
 
 void save_network(const char *filename, neural_network_t *nn);

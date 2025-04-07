@@ -62,7 +62,7 @@ TEST(DataTest, CopyData) {
         ASSERT_FLOAT_EQ(data_copy->inputs[i], dataset->datas[0]->inputs[i]);
     }
 
-    ASSERT_FLOAT_EQ(data_copy->neuron_index, dataset->datas[0]->neuron_index);
+    ASSERT_FLOAT_EQ(data_copy->expected_index, dataset->datas[0]->expected_index);
 
     free_data(data_copy);
     free_dataset(dataset);
@@ -146,7 +146,7 @@ TEST(DataTest, NoiseData) {
 
 TEST(DataTest, OutputExpected) {
     data_t *data = (data_t *)malloc(sizeof(data_t));
-    data->neuron_index = 1;
+    data->expected_index = 1;
 
     ASSERT_FLOAT_EQ(output_expected(0, data), 0.0f);
     ASSERT_FLOAT_EQ(output_expected(1, data), 1.0f);

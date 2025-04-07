@@ -177,57 +177,64 @@ void print_result(neural_network_t *nn) {
     }
 }
 
-void layer_learn_output(layer_t *output_layer, float learn_rate, const data_t *data, float (*activation_function)(float, int)) {
-    layer_t *prev_layer = output_layer->prev_layer;
-    for (size_t i = 0; i < output_layer->length; i++) {
-        float neuron_output = output_layer->output[i];
-        float target_output = output_expected(i, data);
+void layer_learn(neural_network_t *nn, size_t layer_index, float learn_rate, const data_t *data, float (*activation_function)(float, int)) {
+    if (layer_index == nn->length - 1) {
+        // Output layer learn
+        layer_t *output_layer = nn->layers[layer_index];
+        for (size_t i = 0; i < output_layer->length; i++) {
+            float neuron_output = output_layer->output[i];
+            float target_output = output_expected(i, data);
 
-        output_layer->delta[i] = 2 * (neuron_output - target_output) * activation_function(output_layer->weighted_input[i], 1);
+            output_layer->delta[i] = 2 * (neuron_output - target_output) * activation_function(output_layer->weighted_input[i], 1);
 
-        for (size_t j = 0; j < prev_layer->length; j++) {
-            output_layer->weights[j * output_layer->length + i] -= output_layer->delta[i] * prev_layer->output[j] * learn_rate;
-        }
-
-        output_layer->bias[i] -= output_layer->delta[i] * learn_rate;
-    }
-}
-
-void layer_learn_intermediate(layer_t *curr_layer, float learn_rate, const data_t *data, size_t inputs_length, float (*activation_function)(float, int)) {
-    layer_t *prev_layer = curr_layer->prev_layer;
-    layer_t *next_layer = curr_layer->next_layer;
-    for (size_t i = 0; i < curr_layer->length; i++) {
-        curr_layer->delta[i] = 0.0f;
-        for (size_t j = 0; j < next_layer->length; j++) {
-            float weight_next_neuron = next_layer->weights[i * next_layer->length + j];
-            float delta_next_neuron = next_layer->delta[j];
-            curr_layer->delta[i] += weight_next_neuron * delta_next_neuron * activation_function(curr_layer->weighted_input[i], 1);
-        }
-
-        if (prev_layer != NULL) {
-            for (size_t j = 0; j < prev_layer->length; j++) {
-                float input = prev_layer->output[j];
-                curr_layer->weights[j * curr_layer->length + i] -= curr_layer->delta[i] * input * learn_rate;
+            // If output_layer is the only layer use data as prev_layer
+            if (nn->length == 1) {
+                for (size_t j = 0; j < nn->inputs_length; j++) {
+                    output_layer->weights[j * output_layer->length + i] -= output_layer->delta[i] * data->inputs[j] * learn_rate;
+                }
+            } else {
+                layer_t *prev_layer = output_layer->prev_layer;
+                for (size_t j = 0; j < prev_layer->length; j++) {
+                    output_layer->weights[j * output_layer->length + i] -= output_layer->delta[i] * prev_layer->output[j] * learn_rate;
+                }
             }
-        } else {
-            for (size_t j = 0; j < inputs_length; j++) {
-                float input = data->inputs[j];
-                curr_layer->weights[j * curr_layer->length + i] -= curr_layer->delta[i] * input * learn_rate;
-            }
-        }
 
-        curr_layer->bias[i] -= curr_layer->delta[i] * learn_rate;
+            output_layer->bias[i] -= output_layer->delta[i] * learn_rate;
+        }
+    } else {
+        // Intermediate layer learn
+        layer_t *curr_layer = nn->layers[layer_index];
+        layer_t *prev_layer = curr_layer->prev_layer;
+        layer_t *next_layer = curr_layer->next_layer;
+        for (size_t i = 0; i < curr_layer->length; i++) {
+            curr_layer->delta[i] = 0.0f;
+            for (size_t j = 0; j < next_layer->length; j++) {
+                float weight_next_neuron = next_layer->weights[i * next_layer->length + j];
+                float delta_next_neuron = next_layer->delta[j];
+                curr_layer->delta[i] += weight_next_neuron * delta_next_neuron * activation_function(curr_layer->weighted_input[i], 1);
+            }
+
+            if (prev_layer != NULL) {
+                for (size_t j = 0; j < prev_layer->length; j++) {
+                    float input = prev_layer->output[j];
+                    curr_layer->weights[j * curr_layer->length + i] -= curr_layer->delta[i] * input * learn_rate;
+                }
+            } else {
+                for (size_t j = 0; j < nn->inputs_length; j++) {
+                    float input = data->inputs[j];
+                    curr_layer->weights[j * curr_layer->length + i] -= curr_layer->delta[i] * input * learn_rate;
+                }
+            }
+
+            curr_layer->bias[i] -= curr_layer->delta[i] * learn_rate;
+        }
     }
 }
 
 void learn(neural_network_t *nn, float learn_rate, const data_t *data) {
     compute_network(nn, data->inputs);
     for (size_t i = 0; i < nn->length; i++) {
-        if (i == 0) {
-            layer_learn_output(nn->layers[nn->length - 1], learn_rate, data, nn->activation_function);
-        } else {
-            layer_learn_intermediate(nn->layers[nn->length - i - 1], learn_rate, data, nn->inputs_length, nn->activation_function);
-        }
+        layer_learn(nn, nn->length - i - 1, learn_rate, data, nn->activation_function);
     }
 }
 
@@ -289,12 +296,12 @@ float test_network_percent(neural_network_t *nn, const dataset_t *test_dataset) 
     for (size_t i = 0; i < test_dataset->length; i++) {
         compute_network(nn, test_dataset->datas[i]->inputs);
         size_t max = 0;
-        for (int i = 1; i < 10; i++) {
+        for (size_t i = 1; i < test_dataset->inputs_length; i++) {
             if (softmax(nn, i) > softmax(nn, max)) {
                 max = i;
             }
         }
-        if (max == test_dataset->datas[i]->neuron_index) {
+        if (max == test_dataset->datas[i]->expected_index) {
             correct++;
         }
     }
