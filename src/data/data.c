@@ -1,12 +1,9 @@
 #include "data/data.h"
 
-#include <dirent.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
-#include <time.h>
 
 dataset_t *get_dataset(const char *filename) {
     dataset_t *dataset = malloc(sizeof(dataset_t));
@@ -14,14 +11,15 @@ dataset_t *get_dataset(const char *filename) {
     FILE *file = fopen(filename, "rb");
     if (!file) {
         printf("Error opening %s for reading data set\n", filename);
+        free(dataset);
         return NULL;
     }
 
-    fread(&dataset->length, sizeof(unsigned int), 1, file);
-    dataset->datas = malloc(sizeof(data_t*) * dataset->length);
+    fread(&dataset->length, sizeof(size_t), 1, file);
+    dataset->datas = malloc(sizeof(data_t *) * dataset->length);
 
-    fread(&dataset->inputs_length, sizeof(unsigned int), 1, file);
-    for (unsigned int i = 0; i < dataset->length; i++) {
+    fread(&dataset->inputs_length, sizeof(size_t), 1, file);
+    for (size_t i = 0; i < dataset->length; i++) {
         data_t *data = malloc(sizeof(data_t));
         data->inputs = malloc(sizeof(float) * dataset->inputs_length);
         size_t read_count = fread(data->inputs, sizeof(float), dataset->inputs_length, file);
@@ -29,7 +27,7 @@ dataset_t *get_dataset(const char *filename) {
             printf("Error: Failed to read data. Maybe you haven't run 'git lfs pull'?\n");
             return NULL;
         }
-        fread(&(data->neuron_index), sizeof(unsigned int), 1, file);
+        fread(&(data->expected_index), sizeof(size_t), 1, file);
 
         dataset->datas[i] = data;
     }
@@ -40,8 +38,8 @@ dataset_t *get_dataset(const char *filename) {
 }
 
 void free_dataset(dataset_t *dataset) {
-    for (unsigned int i = 0; i < dataset->length; i++) {
-        free(dataset->datas[i]->inputs);
+    for (size_t i = 0; i < dataset->length; i++) {
+        free_data(dataset->datas[i]);
     }
     free(dataset->datas);
     free(dataset);
@@ -52,10 +50,10 @@ void free_data(data_t *data) {
     free(data);
 }
 
-data_t *get_data_copy(data_t* data, unsigned int inputs_length) {
+data_t *get_data_copy(const data_t *data, size_t inputs_length) {
     data_t *copy = malloc(sizeof(data_t));
 
-    copy->neuron_index = data->neuron_index;
+    copy->expected_index = data->expected_index;
 
     size_t inputs_size = sizeof(float) * inputs_length;
     copy->inputs = malloc(inputs_size);
@@ -142,8 +140,8 @@ void offset_data(data_t *data, int width, int height, float offset_x, float offs
     data->inputs = new_inputs;
 }
 
-void noise_data(data_t *data, unsigned int inputs_length, float noise_factor, float probability) {
-    for (unsigned int i = 0; i < inputs_length; i++) {
+void noise_data(data_t *data, size_t inputs_length, float noise_factor, float probability) {
+    for (size_t i = 0; i < inputs_length; i++) {
         float random_value = (float)rand() / (float)RAND_MAX;
         if (random_value <= probability) {
             float noise = ((float)rand() / (float)RAND_MAX * noise_factor);
@@ -154,3 +152,10 @@ void noise_data(data_t *data, unsigned int inputs_length, float noise_factor, fl
     }
 }
 
+float output_expected(size_t expected_index, const data_t *data) {
+    if (data->expected_index == expected_index) {
+        return 1.0f;
+    } else {
+        return 0.0f;
+    }
+}

@@ -1,4 +1,4 @@
-name: Build and Test
+name: Build, Test, and Lint
 
 on:
   push:
@@ -26,7 +26,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y cmake libgtest-dev
+        sudo apt-get install -y cmake libgtest-dev clang-format
 
     - name: Configure CMake
       run: cmake -S . -B build
@@ -36,3 +36,6 @@ jobs:
 
     - name: Run Tests
       run: ctest --output-on-failure --test-dir build --verbose
+
+    - name: Check Formatting (clang-format)
+      run: find . -not -path "./build/*" \( -name '*.h' -o -name '*.cpp' -o -name '*.c' \) -print0 | xargs -0 clang-format --dry-run --Werror -style=file

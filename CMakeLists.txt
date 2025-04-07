@@ -14,21 +14,26 @@ find_package(GTest REQUIRED)
 file(GLOB_RECURSE SRC_FILES src/*.c EXCLUDE "src/main.c")
 file(GLOB_RECURSE TEST_FILES test/*.cpp)
 
+set(ASAN_FLAGS -fsanitize=address -fno-omit-frame-pointer -g)
+set(WARNING_FLAGS -Wall -Wextra -Wpedantic)
+
 add_library(libcneuron ${SRC_FILES})
 target_include_directories(libcneuron PRIVATE ${CMAKE_SOURCE_DIR}/include)
-target_compile_options(libcneuron PRIVATE -Wall -Wextra -Wpedantic)
+target_compile_options(libcneuron PRIVATE ${WARNING_FLAGS} ${ASAN_FLAGS})
+target_link_options(libcneuron PRIVATE ${ASAN_FLAGS})
 target_link_libraries(libcneuron PRIVATE m)
 
 add_executable(${PROJECT_NAME} src/main.c)
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_compile_options(${PROJECT_NAME} PRIVATE ${WARNING_FLAGS} ${ASAN_FLAGS})
+target_link_options(${PROJECT_NAME} PRIVATE ${ASAN_FLAGS})
 target_link_libraries(${PROJECT_NAME} PRIVATE m libcneuron)
-
-# Temporarly to hold libary codes
-target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic)
 
 add_executable(tests ${TEST_FILES})
 target_include_directories(tests PRIVATE ${CMAKE_SOURCE_DIR}/include)
-target_link_libraries(tests PRIVATE libcneuron GTest::gtest_main m)
+target_compile_options(tests PRIVATE ${WARNING_FLAGS} ${ASAN_FLAGS})
+target_link_options(tests PRIVATE ${ASAN_FLAGS})
+target_link_libraries(tests PRIVATE m libcneuron GTest::gtest_main)
 
 add_test(NAME tests COMMAND tests)
 

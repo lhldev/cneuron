@@ -1,3 +1,3 @@
 soley for debug reference only
 mnist data written with:
-[unsigned int: dataset_length][unsigned int: inputs_length][float[]: inputs][unsigned int: neuron_index]...[float[]: inputs][unsigned int: neuron_index]
+[size_t: dataset_length][size_t: inputs_length][float[]: inputs][size_t: expected_index]...[float[]: inputs][size_t: expected_index]
