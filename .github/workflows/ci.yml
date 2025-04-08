@@ -20,8 +20,11 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
+<<<<<<< HEAD
       with:
         lfs: true
+=======
+>>>>>>> b8e9fae3b (Avoid using git lfs)
 
     - name: Install dependencies
       run: |

@@ -44,13 +44,58 @@ void train(neural_network_t *nn, dataset_t *dataset, dataset_t *test_dataset, fl
     }
 }
 
-// TODO:
-// gpu parallelization
+dataset_t *get_mnist(int is_test) {
+    char dir[512];
+    sprintf(dir, "data/mnist/%s", is_test ? "test" : "train");
+
+    dataset_t **datasets = malloc(sizeof(dataset_t *) * 10);
+
+    for (size_t i = 0; i <= 9; i++) {
+        char filepath[518];
+        sprintf(filepath, "%s/%zu.dat", dir, i);
+        dataset_t *read_dataset = get_dataset(filepath);
+        if (!read_dataset) {
+            printf("Failed to load mnist dataset for digit %zu\n", i);
+            return NULL;
+        }
+
+        datasets[i] = read_dataset;
+    }
+
+    size_t total_length = 0;
+    for (size_t i = 0; i < 10; i++) {
+        total_length += datasets[i]->length;
+    }
+
+    dataset_t *dataset = malloc(sizeof(dataset_t));
+    dataset->datas = malloc(sizeof(data_t *) * total_length);
+    dataset->length = total_length;
+    dataset->inputs_length = IMAGE_SIZE * IMAGE_SIZE;
+
+    size_t curr_count = 0;
+    for (size_t i = 0; i < 10; i++) {
+        for (size_t j = 0; j < datasets[i]->length; j++) {
+            dataset->datas[curr_count] = datasets[i]->datas[j];
+            curr_count++;
+        }
+
+        free(datasets[i]->datas);
+        free(datasets[i]);
+    }
+
+    if (curr_count != dataset->length) {
+        printf("Error reading all mnist data. Read: %zu, Expected: %zu\n", curr_count, dataset->length);
+    }
+
+    free(datasets);
+
+    return dataset;
+}
 
 int main() {
     srand(time(NULL));
-    dataset_t *dataset = get_dataset("data/mnist/mnist_train.dat");
-    dataset_t *test_dataset = get_dataset("data/mnist/mnist_test.dat");
+    dataset_t *dataset = get_mnist(0);
+    dataset_t *test_dataset = get_mnist(1);
     size_t network_length = 3;
     size_t *layer_lengths = malloc(sizeof(size_t) * network_length);
     layer_lengths[0] = 100;

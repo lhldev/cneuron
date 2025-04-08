@@ -24,7 +24,7 @@ dataset_t *get_dataset(const char *filename) {
         data->inputs = malloc(sizeof(float) * dataset->inputs_length);
         size_t read_count = fread(data->inputs, sizeof(float), dataset->inputs_length, file);
         if (read_count != dataset->inputs_length) {
-            printf("Error: Failed to read data. Maybe you haven't run 'git lfs pull'?\n");
+            printf("Error reading data\n");
             return NULL;
         }
         fread(&(data->expected_index), sizeof(size_t), 1, file);

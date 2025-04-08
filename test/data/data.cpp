@@ -24,7 +24,7 @@ TEST(DataTest, GetDatasetFileNotFound) {
 }
 
 TEST(DataTest, GetDatasetValidFile) {
-    dataset_t *dataset = get_dataset("data/mnist/mnist_train.dat");
+    dataset_t *dataset = get_dataset("data/mnist/test/0.dat");
     ASSERT_NE(dataset, nullptr);
     ASSERT_GT(dataset->length, 0);
     ASSERT_GT(dataset->inputs_length, 0);
@@ -37,7 +37,7 @@ TEST(DataTest, GetDatasetValidFile) {
 }
 
 TEST(DataTest, FreeDataset) {
-    dataset_t *dataset = get_dataset("data/mnist/mnist_test.dat");
+    dataset_t *dataset = get_dataset("data/mnist/test/0.dat");
 
     free_dataset(dataset);
     // No crash
@@ -52,7 +52,7 @@ TEST(DataTest, FreeData) {
 }
 
 TEST(DataTest, CopyData) {
-    dataset_t *dataset = get_dataset("data/mnist/mnist_test.dat");
+    dataset_t *dataset = get_dataset("data/mnist/test/0.dat");
 
     data_t *data_copy = get_data_copy(dataset->datas[0], dataset->inputs_length);
     ASSERT_NE(data_copy, nullptr);
