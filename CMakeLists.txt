@@ -7,6 +7,12 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type: Debug or Release" FORCE)
+endif()
+
+message(STATUS "Building in ${CMAKE_BUILD_TYPE} mode")
+
 enable_testing()
 
 find_package(GTest REQUIRED)
@@ -16,23 +22,34 @@ file(GLOB_RECURSE TEST_FILES test/*.cpp)
 
 set(ASAN_FLAGS -fsanitize=address -fno-omit-frame-pointer -g)
 set(WARNING_FLAGS -Wall -Wextra -Wpedantic)
+set(RELEASE_FLAGS -O3 -DNDEBUG)
 
+function(apply_target_flags target)
+    target_include_directories(${target} PRIVATE ${CMAKE_SOURCE_DIR}/include)
+    target_compile_options(${target} PRIVATE ${WARNING_FLAGS})
+
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        target_compile_options(${target} PRIVATE ${ASAN_FLAGS})
+        target_link_options(${target} PRIVATE ${ASAN_FLAGS})
+    elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
+        target_compile_options(${target} PRIVATE ${RELEASE_FLAGS})
+        target_link_options(${target} PRIVATE -O3)
+    endif()
+endfunction()
+
+# libcneuron library
 add_library(libcneuron ${SRC_FILES})
-target_include_directories(libcneuron PRIVATE ${CMAKE_SOURCE_DIR}/include)
-target_compile_options(libcneuron PRIVATE ${WARNING_FLAGS} ${ASAN_FLAGS})
-target_link_options(libcneuron PRIVATE ${ASAN_FLAGS})
+apply_target_flags(libcneuron)
 target_link_libraries(libcneuron PRIVATE m)
 
+# Main executable
 add_executable(${PROJECT_NAME} src/main.c)
-target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/include)
-target_compile_options(${PROJECT_NAME} PRIVATE ${WARNING_FLAGS} ${ASAN_FLAGS})
-target_link_options(${PROJECT_NAME} PRIVATE ${ASAN_FLAGS})
+apply_target_flags(${PROJECT_NAME})
 target_link_libraries(${PROJECT_NAME} PRIVATE m libcneuron)
 
+# Test executable
 add_executable(tests ${TEST_FILES})
-target_include_directories(tests PRIVATE ${CMAKE_SOURCE_DIR}/include)
-target_compile_options(tests PRIVATE ${WARNING_FLAGS} ${ASAN_FLAGS})
-target_link_options(tests PRIVATE ${ASAN_FLAGS})
+apply_target_flags(tests)
 target_link_libraries(tests PRIVATE m libcneuron GTest::gtest_main)
 
 add_test(NAME tests COMMAND tests)

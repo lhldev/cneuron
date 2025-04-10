@@ -1,6 +1,9 @@
+#include <errno.h>
 #include <math.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 
 #include "data/data.h"
@@ -8,15 +11,15 @@
 
 #define IMAGE_SIZE 28
 
-float sigmoid(float val, int is_deravative) {
+float sigmoid(float val, bool is_deravative) {
     float result = 1.0f / (1.0f + expf(-val));
-    if (is_deravative == 1) {
+    if (is_deravative) {
         return result * (1.0f - result);
     }
     return result;
 }
 
-float relu(float val, int is_deravative) {
+float relu(float val, bool is_deravative) {
     if (is_deravative) {
         return (val > 0.0f) ? 1.0f : 0.0f;
     }
@@ -44,15 +47,15 @@ void train(neural_network_t *nn, dataset_t *dataset, dataset_t *test_dataset, fl
     }
 }
 
-dataset_t *get_mnist(int is_test) {
+dataset_t *get_mnist(bool is_test) {
     char dir[512];
-    sprintf(dir, "data/mnist/%s", is_test ? "test" : "train");
+    snprintf(dir, sizeof(dir), "data/mnist/%s", is_test ? "test" : "train");
 
     dataset_t **datasets = malloc(sizeof(dataset_t *) * 10);
 
     for (size_t i = 0; i <= 9; i++) {
         char filepath[518];
-        sprintf(filepath, "%s/%zu.dat", dir, i);
+        snprintf(filepath, sizeof(filepath), "%s/%zu.dat", dir, i);
         dataset_t *read_dataset = get_dataset(filepath);
         if (!read_dataset) {
             printf("Failed to load mnist dataset for digit %zu\n", i);
@@ -94,8 +97,8 @@ dataset_t *get_mnist(int is_test) {
 
 int main() {
     srand(time(NULL));
-    dataset_t *dataset = get_mnist(0);
-    dataset_t *test_dataset = get_mnist(1);
+    dataset_t *dataset = get_mnist(false);
+    dataset_t *test_dataset = get_mnist(true);
     size_t network_length = 3;
     size_t *layer_lengths = malloc(sizeof(size_t) * network_length);
     layer_lengths[0] = 100;
@@ -121,11 +124,13 @@ int main() {
         if (cmd[0] == 'q') {
             break;
         } else if (cmd[0] == 's') {
-            save_network("output/nn.dat", nn);
-            printf("Neural network saved!\n");
+            if (save_network("output/nn.dat", nn)) {
+                printf("Neural network saved!\n");
+            }
         } else if (cmd[0] == 'l') {
-            load_network("output/nn.dat", nn);
-            printf("Neural network loaded!\n");
+            if (load_network("output/nn.dat", nn)) {
+                printf("Neural network loaded!\n");
+            }
         } else if (cmd[0] == 't') {
             train(nn, dataset, test_dataset, learn_rate, learn_amount, log_amount);
             printf("Training completed. Trained for %d times.\n", learn_amount);
@@ -135,27 +140,32 @@ int main() {
         } else if (cmd[0] == 'i') {
             printf("Enter your input in the window and press enter...\n");
             while (1) {
-                system("python3 -W ignore input.py");
+                int ret = system("python3 -W ignore input.py");
+                if (ret != 0) {
+                    fprintf(stderr, "Command to open window failed with exit code %d\n", ret);
+                    break;
+                }
 
                 // Open the file for reading
                 fp = fopen("output/grid_array.txt", "r");
                 if (!fp) {
-                    printf("Error opening file\n");
+                    fprintf(stderr, "Error opening file: %s\n", strerror(errno));
                     break;
                 }
 
                 char quit_flag;
-                fscanf(fp, " %c", &quit_flag);
-                if (quit_flag == 'q') {
-                    fclose(fp);
-                    break;
+                if (fscanf(fp, " %c", &quit_flag) == 1) {
+                    if (quit_flag == 'q') {
+                        fclose(fp);
+                        break;
+                    }
                 }
 
                 float generic_float = 0.0;
                 int count = 0;
                 while (fscanf(fp, "%f", &generic_float) == 1) {
                     if (count >= IMAGE_SIZE * IMAGE_SIZE) {
-                        printf("Warning parsing input\n");
+                        fprintf(stderr, "Error parsing input\n");
                         break;
                     }
                     user_input[count++] = generic_float;

@@ -1,14 +1,27 @@
 #include "network/network.h"
 
+#include <assert.h>
+#include <errno.h>
 #include <math.h>
+#include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "data/data.h"
 
-float random_float(float min, float max) { return (float)rand() / (float)RAND_MAX * (max - min) + min; }
+float random_float(float min, float max) {
+    assert(min < max);
+
+    return (float)rand() / (float)RAND_MAX * (max - min) + min;
+}
 
 void matrix_multiply(const float *a, const float *b, float *c, size_t rows_a, size_t cols_a, size_t cols_b) {
+    assert(a);
+    assert(b);
+    assert(c);
+
     for (size_t col = 0; col < cols_b; ++col) {
         for (size_t row = 0; row < rows_a; ++row) {
             float sum = 0.0f;
@@ -21,19 +34,46 @@ void matrix_multiply(const float *a, const float *b, float *c, size_t rows_a, si
 }
 
 layer_t *get_layer(size_t length, size_t prev_length) {
-    layer_t *layer = malloc(sizeof(layer_t));
+    layer_t *layer = calloc(1, sizeof(layer_t));
+    if (!layer) {
+        return NULL;
+    }
 
     layer->length = length;
 
     layer->weights = malloc(sizeof(float) * length * prev_length);
+    if (!layer->weights) {
+        free_layer(layer);
+        return NULL;
+    }
+
     for (size_t i = 0; i < length * prev_length; i++) {
         layer->weights[i] = ((float)rand() / (float)RAND_MAX * 2.0f - 1.0f);
     }
 
     layer->delta = malloc(sizeof(float) * length);
+    if (!layer->delta) {
+        free_layer(layer);
+        return NULL;
+    }
+
     layer->bias = malloc(sizeof(float) * length);
+    if (!layer->bias) {
+        free_layer(layer);
+        return NULL;
+    }
+
     layer->output = malloc(sizeof(float) * length);
+    if (!layer->output) {
+        free_layer(layer);
+        return NULL;
+    }
+
     layer->weighted_input = malloc(sizeof(float) * length);
+    if (!layer->output) {
+        free_layer(layer);
+        return NULL;
+    }
 
     for (size_t i = 0; i < length; i++) {
         layer->delta[i] = 0.0f;
@@ -45,14 +85,29 @@ layer_t *get_layer(size_t length, size_t prev_length) {
     return layer;
 }
 
-neural_network_t *get_neural_network(size_t layer_length, const size_t *layer_lengths, size_t inputs_length, float (*activation_function)(float, int)) {
+neural_network_t *get_neural_network(size_t layer_length, const size_t *layer_lengths, size_t inputs_length, float (*activation_function)(float, bool)) {
+    assert(layer_lengths);
+
     neural_network_t *nn = malloc(sizeof(neural_network_t));
-    nn->layers = malloc(sizeof(layer_t) * layer_length);
+    if (!nn) {
+        return NULL;
+    }
+
+    nn->layers = calloc(layer_length, sizeof(layer_t));
+    if (!nn->layers) {
+        free(nn);
+        return NULL;
+    }
+
     nn->length = layer_length;
     nn->inputs_length = inputs_length;
 
     for (size_t i = 0; i < layer_length; i++) {
         nn->layers[i] = get_layer(layer_lengths[i], (i == 0) ? inputs_length : layer_lengths[i - 1]);
+        if (!nn->layers[i]) {
+            free_neural_network(nn);
+            return NULL;
+        }
     }
 
     for (size_t i = 0; i < layer_length; i++) {
@@ -65,6 +120,10 @@ neural_network_t *get_neural_network(size_t layer_length, const size_t *layer_le
 }
 
 void free_layer(layer_t *layer) {
+    if (!layer) {
+        return;
+    }
+
     free(layer->weighted_input);
     free(layer->output);
     free(layer->bias);
@@ -74,6 +133,10 @@ void free_layer(layer_t *layer) {
 }
 
 void free_neural_network(neural_network_t *nn) {
+    if (!nn) {
+        return;
+    }
+
     for (size_t i = 0; i < nn->length; i++) {
         free_layer(nn->layers[i]);
     }
@@ -82,6 +145,9 @@ void free_neural_network(neural_network_t *nn) {
 }
 
 void compute_network(neural_network_t *nn, const float *inputs) {
+    assert(nn);
+    assert(inputs);
+
     layer_t *curr = nn->layers[0];
     while (curr != NULL) {
         if (curr->prev_layer == NULL) {
@@ -98,6 +164,8 @@ void compute_network(neural_network_t *nn, const float *inputs) {
 }
 
 float softmax(neural_network_t *nn, size_t neuron_index) {
+    assert(nn);
+
     float sum = 0.0f;
     float max_output = -INFINITY;
 
@@ -116,9 +184,19 @@ float softmax(neural_network_t *nn, size_t neuron_index) {
 }
 
 void print_activation_percentages(neural_network_t *nn) {
+    assert(nn);
+
     layer_t *output_layer = nn->layers[nn->length - 1];
     float *percentages = malloc(sizeof(float) * output_layer->length);
+    if (!percentages) {
+        return;
+    }
+
     size_t *indices = malloc(sizeof(size_t) * output_layer->length);
+    if (!indices) {
+        free(percentages);
+        return;
+    }
 
     // Store the activation percentages and indices
     for (size_t i = 0; i < output_layer->length; i++) {
@@ -156,6 +234,9 @@ void print_activation_percentages(neural_network_t *nn) {
 }
 
 float cost(neural_network_t *nn, const dataset_t *test_dataset, size_t num_test) {
+    assert(nn);
+    assert(test_dataset);
+
     float cost = 0.0f;
 
     layer_t *output_layer = nn->layers[nn->length - 1];
@@ -171,13 +252,19 @@ float cost(neural_network_t *nn, const dataset_t *test_dataset, size_t num_test)
 }
 
 void print_result(neural_network_t *nn) {
+    assert(nn);
+
     layer_t *output_layer = nn->layers[nn->length - 1];
     for (size_t i = 0; i < output_layer->length; i++) {
         printf("%f ", output_layer->output[i]);
     }
 }
 
-void layer_learn(neural_network_t *nn, size_t layer_index, float learn_rate, const data_t *data, float (*activation_function)(float, int)) {
+void layer_learn(neural_network_t *nn, size_t layer_index, float learn_rate, const data_t *data, float (*activation_function)(float, bool)) {
+    assert(nn);
+    assert(data);
+    assert(activation_function);
+
     if (layer_index == nn->length - 1) {
         // Output layer learn
         layer_t *output_layer = nn->layers[layer_index];
@@ -185,7 +272,7 @@ void layer_learn(neural_network_t *nn, size_t layer_index, float learn_rate, con
             float neuron_output = output_layer->output[i];
             float target_output = output_expected(i, data);
 
-            output_layer->delta[i] = 2 * (neuron_output - target_output) * activation_function(output_layer->weighted_input[i], 1);
+            output_layer->delta[i] = 2 * (neuron_output - target_output) * activation_function(output_layer->weighted_input[i], true);
 
             // If output_layer is the only layer use data as prev_layer
             if (nn->length == 1) {
@@ -211,7 +298,7 @@ void layer_learn(neural_network_t *nn, size_t layer_index, float learn_rate, con
             for (size_t j = 0; j < next_layer->length; j++) {
                 float weight_next_neuron = next_layer->weights[i * next_layer->length + j];
                 float delta_next_neuron = next_layer->delta[j];
-                curr_layer->delta[i] += weight_next_neuron * delta_next_neuron * activation_function(curr_layer->weighted_input[i], 1);
+                curr_layer->delta[i] += weight_next_neuron * delta_next_neuron * activation_function(curr_layer->weighted_input[i], true);
             }
 
             if (prev_layer != NULL) {
@@ -232,73 +319,113 @@ void layer_learn(neural_network_t *nn, size_t layer_index, float learn_rate, con
 }
 
 void learn(neural_network_t *nn, float learn_rate, const data_t *data) {
+    assert(nn);
+    assert(data);
+
     compute_network(nn, data->inputs);
     for (size_t i = 0; i < nn->length; i++) {
         layer_learn(nn, nn->length - i - 1, learn_rate, data, nn->activation_function);
     }
 }
 
-void save_network(const char *filename, neural_network_t *nn) {
+bool save_network(const char *filename, neural_network_t *nn) {
+    assert(filename);
+    assert(nn);
+
     FILE *file = fopen(filename, "wb");
     if (!file) {
-        printf("Error opening file for writing\n");
-        return;
+        fprintf(stderr, "Error opening file '%s' for writing neural network: %s\n", filename, strerror(errno));
+        return false;
     }
 
-    fwrite(&(nn->inputs_length), sizeof(size_t), 1, file);
-    fwrite(&(nn->length), sizeof(size_t), 1, file);
+    if (fwrite(&(nn->inputs_length), sizeof(uint64_t), 1, file) != 1 ||
+        fwrite(&(nn->length), sizeof(uint64_t), 1, file) != 1) {
+        fprintf(stderr, "Failed to write network metadata to '%s'\n", filename);
+        fclose(file);
+        return false;
+    }
 
     for (size_t i = 0; i < nn->length; i++) {
-        fwrite(&(nn->layers[i]->length), sizeof(size_t), 1, file);
-        fwrite(nn->layers[i]->weights, sizeof(float), nn->layers[i]->length * ((i == 0) ? nn->inputs_length : nn->layers[i]->prev_layer->length), file);
-        fwrite(nn->layers[i]->bias, sizeof(float), nn->layers[i]->length, file);
+        size_t weights_length = nn->layers[i]->length * ((i == 0) ? nn->inputs_length : nn->layers[i]->prev_layer->length);
+
+        if (fwrite(&(nn->layers[i]->length), sizeof(uint64_t), 1, file) != 1 || fwrite(nn->layers[i]->weights, sizeof(float), weights_length, file) != weights_length || fwrite(nn->layers[i]->bias, sizeof(float), nn->layers[i]->length, file) != nn->layers[i]->length) {
+            fprintf(stderr, "Failed to write layer %zu data to '%s'\n", i, filename);
+            fclose(file);
+            return false;
+        }
     }
 
     fclose(file);
+    return true;
 }
 
-void load_network(const char *filename, neural_network_t *nn) {
+bool load_network(const char *filename, neural_network_t *nn) {
+    assert(filename);
+    assert(nn);
+
     FILE *file = fopen(filename, "rb");
     if (!file) {
-        printf("Error opening file for reading\n");
-        return;
+        fprintf(stderr, "Error opening file '%s' for reading neural network: %s\n", filename, strerror(errno));
+        return false;
     }
 
-    size_t check_val = 0;
-    fread(&check_val, sizeof(size_t), 1, file);
-    if (check_val != nn->inputs_length) {
-        printf("Number of input layer not compatiable with save file, read: %zu\n", check_val);
-        return;
+    uint64_t inputs_length = 0;
+    if (fread(&inputs_length, sizeof(uint64_t), 1, file) != 1) {
+        fprintf(stderr, "Failed to read inputs_length from %s\n", filename);
+        goto cleanup;
+    }
+    if (inputs_length != nn->inputs_length) {
+        fprintf(stderr, "Invalid input layer length. Expected: %zu. But found: %llu\n", nn->inputs_length, (unsigned long long)inputs_length);
+        goto cleanup;
     }
 
-    fread(&check_val, sizeof(size_t), 1, file);
-    if (check_val != nn->length) {
-        printf("Number of hidden layer not compatable with save file, read: %zu\n", check_val);
-        return;
+    uint64_t network_length = 0;
+    if (fread(&network_length, sizeof(uint64_t), 1, file) != 1) {
+        fprintf(stderr, "Failed to read network_length from %s\n", filename);
+        goto cleanup;
+    }
+    if (network_length != nn->length) {
+        fprintf(stderr, "Invalid network layer. Expected: %zu. But found: %llu\n", nn->length, (unsigned long long)network_length);
+        goto cleanup;
     }
 
     for (size_t i = 0; i < nn->length; i++) {
-        fread(&check_val, sizeof(size_t), 1, file);
-        if (check_val != nn->layers[i]->length) {
-            printf("Number of hidden layer neuron not compatable with save file, read: %zu\n", check_val);
-            return;
+        uint64_t layer_length = 0;
+        if (fread(&layer_length, sizeof(uint64_t), 1, file) != 1) {
+            fprintf(stderr, "Failed to read layer_length from %s\n", filename);
+            goto cleanup;
+        }
+        if (layer_length != nn->layers[i]->length) {
+            fprintf(stderr, "Invalid layer length. Expected: %zu. But found: %llu\n", nn->layers[i]->length, (unsigned long long)layer_length);
+            goto cleanup;
         }
 
-        fread(nn->layers[i]->weights, sizeof(float), nn->layers[i]->length * ((i == 0) ? nn->inputs_length : nn->layers[i]->prev_layer->length), file);
-        fread(nn->layers[i]->bias, sizeof(float), nn->layers[i]->length, file);
+        size_t weights_length = nn->layers[i]->length * ((i == 0) ? nn->inputs_length : nn->layers[i]->prev_layer->length);
+        if (fread(nn->layers[i]->weights, sizeof(float), weights_length, file) != weights_length || fread(nn->layers[i]->bias, sizeof(float), nn->layers[i]->length, file) != nn->layers[i]->length) {
+            fprintf(stderr, "Failed to read layer %zu data from '%s'\n", i, filename);
+            goto cleanup;
+        }
     }
 
     fclose(file);
+    return true;
+
+cleanup:
+    fclose(file);
+    return false;
 }
 
 float test_network_percent(neural_network_t *nn, const dataset_t *test_dataset) {
+    assert(nn);
+    assert(test_dataset);
+
     int correct = 0;
     for (size_t i = 0; i < test_dataset->length; i++) {
         compute_network(nn, test_dataset->datas[i]->inputs);
         size_t max = 0;
-        for (size_t i = 1; i < test_dataset->inputs_length; i++) {
-            if (softmax(nn, i) > softmax(nn, max)) {
-                max = i;
+        for (size_t j = 0; j < nn->layers[nn->length - 1]->length; j++) {
+            if (softmax(nn, j) > softmax(nn, max)) {
+                max = j;
             }
         }
         if (max == test_dataset->datas[i]->expected_index) {

@@ -1,3 +1,3 @@
 soley for debug reference only
 mnist data written with:
-[size_t: dataset_length][size_t: inputs_length][float[]: inputs][size_t: expected_index]...[float[]: inputs][size_t: expected_index]
+[uint64_t: dataset_length][uint64_t: inputs_length][float[]: inputs][uint64_t: expected_index]...[float[]: inputs][uint64_t: expected_index]

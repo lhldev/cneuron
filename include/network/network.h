@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdbool.h>
 #include <stddef.h>
 
 #include "data/data.h"
@@ -19,7 +20,7 @@ typedef struct {
     layer_t **layers;
     size_t length;
     size_t inputs_length;
-    float (*activation_function)(float, int);
+    float (*activation_function)(float, bool);
 } neural_network_t;
 
 float random_float(float min, float max);
@@ -28,7 +29,7 @@ float random_float(float min, float max);
 void matrix_multiply(const float *a, const float *b, float *c, size_t rows_a, size_t cols_a, size_t cols_b);
 
 layer_t *get_layer(size_t length, size_t prev_length);
-neural_network_t *get_neural_network(size_t layer_length, const size_t *layer_lengths, size_t inputs_length, float (*activation_function)(float, int));
+neural_network_t *get_neural_network(size_t layer_length, const size_t *layer_lengths, size_t inputs_length, float (*activation_function)(float, bool));
 
 void free_layer(layer_t *layer);
 void free_neural_network(neural_network_t *nn);
@@ -41,10 +42,10 @@ void print_activation_percentages(neural_network_t *nn);
 
 float cost(neural_network_t *nn, const dataset_t *test_dataset, size_t num_test);
 
-void layer_learn(neural_network_t *nn, size_t layer_index, float learn_rate, const data_t *data, float (*activation_function)(float, int));
+void layer_learn(neural_network_t *nn, size_t layer_index, float learn_rate, const data_t *data, float (*activation_function)(float, bool));
 void learn(neural_network_t *nn, float learn_rate, const data_t *data);
 
-void save_network(const char *filename, neural_network_t *nn);
-void load_network(const char *filename, neural_network_t *nn);
+bool save_network(const char *filename, neural_network_t *nn);
+bool load_network(const char *filename, neural_network_t *nn);
 
 float test_network_percent(neural_network_t *nn, const dataset_t *test_dataset);
