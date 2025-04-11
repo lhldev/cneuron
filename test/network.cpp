@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
 extern "C" {
-#include "network/network.h"
+#include "cneuron/cneuron.h"
 }
 
 #include <math.h>

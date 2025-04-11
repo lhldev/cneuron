@@ -1,5 +1,3 @@
-#include "network/network.h"
-
 #include <assert.h>
 #include <errno.h>
 #include <math.h>
@@ -9,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "data/data.h"
+#include "cneuron/cneuron.h"
 
 float random_float(float min, float max) {
     assert(min < max);

@@ -6,8 +6,7 @@
 #include <string.h>
 #include <time.h>
 
-#include "data/data.h"
-#include "network/network.h"
+#include "cneuron/cneuron.h"
 
 #define IMAGE_SIZE 28
 

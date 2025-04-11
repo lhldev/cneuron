@@ -1,5 +1,3 @@
-#include "data/data.h"
-
 #include <assert.h>
 #include <errno.h>
 #include <math.h>
@@ -7,6 +5,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "cneuron/cneuron.h"
 
 #define BACKGROUND_VALUE 0.0f
 
@@ -239,10 +239,10 @@ void noise_data(data_t *data, size_t inputs_length, float noise_factor, float pr
     }
 }
 
-float output_expected(size_t expected_index, const data_t *data) {
+float output_expected(size_t index, const data_t *data) {
     assert(data);
 
-    if (data->expected_index == expected_index) {
+    if (index == data->expected_index) {
         return 1.0f;
     } else {
         return 0.0f;

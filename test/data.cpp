@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
 extern "C" {
-#include "data/data.h"
+#include "cneuron/cneuron.h"
 }
 
 TEST(DataTest, CreateData) {
