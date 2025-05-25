@@ -10,7 +10,7 @@
 
 #define BACKGROUND_VALUE 0.0f
 
-dataset_t *get_dataset(const char *filename) {
+dataset *get_dataset(const char *filename) {
     assert(filename);
 
     FILE *file = fopen(filename, "rb");
@@ -19,72 +19,72 @@ dataset_t *get_dataset(const char *filename) {
         return NULL;
     }
 
-    dataset_t *dataset = malloc(sizeof(dataset_t));
-    if (!dataset) {
+    dataset *read_dataset = malloc(sizeof(dataset));
+    if (!read_dataset) {
         fclose(file);
         return NULL;
     }
 
-    if (fread(&dataset->length, sizeof(uint64_t), 1, file) != 1) {
+    if (fread(&read_dataset->length, sizeof(uint64_t), 1, file) != 1) {
         fprintf(stderr, "Failed to read dataset length from %s\n", filename);
-        free(dataset);
+        free(read_dataset);
         fclose(file);
         return NULL;
     }
 
-    dataset->datas = calloc(dataset->length, sizeof(data_t *));
-    if (!dataset->datas) {
-        free(dataset);
+    read_dataset->datas = calloc(read_dataset->length, sizeof(data *));
+    if (!read_dataset->datas) {
+        free(read_dataset);
         fclose(file);
         return NULL;
     }
 
-    if (fread(&dataset->inputs_length, sizeof(uint64_t), 1, file) != 1) {
+    if (fread(&read_dataset->inputs_length, sizeof(uint64_t), 1, file) != 1) {
         fprintf(stderr, "Failed to read inputs_length from %s\n", filename);
-        free(dataset);
+        free(read_dataset);
         fclose(file);
         return NULL;
     }
 
-    for (size_t i = 0; i < dataset->length; i++) {
-        data_t *data = malloc(sizeof(data_t));
-        if (!data) {
+    for (size_t i = 0; i < read_dataset->length; i++) {
+        data *read_data = malloc(sizeof(data));
+        if (!read_data) {
             goto cleanup;
         }
 
-        data->inputs = malloc(sizeof(float) * dataset->inputs_length);
-        if (!data->inputs) {
-            free(data);
+        read_data->inputs = malloc(sizeof(float) * read_dataset->inputs_length);
+        if (!read_data->inputs) {
+            free(read_data);
             goto cleanup;
         }
 
-        size_t read_inputs = fread(data->inputs, sizeof(float), dataset->inputs_length, file);
-        if (read_inputs != dataset->inputs_length) {
-            fprintf(stderr, "Invalid inputs_length from %s. Expected: %zu. But found: %zu\n", filename, dataset->inputs_length, read_inputs);
-            free_data(data);
+        size_t read_inputs = fread(read_data->inputs, sizeof(float), read_dataset->inputs_length, file);
+        if (read_inputs != read_dataset->inputs_length) {
+            fprintf(stderr, "Invalid inputs_length from %s. Expected: %zu. But found: %zu\n", filename, read_dataset->inputs_length, read_inputs);
+            free_data(read_data);
             goto cleanup;
         }
 
-        if (fread(&(data->expected_index), sizeof(uint64_t), 1, file) != 1) {
+        if (fread(&(read_data->expected_index), sizeof(uint64_t), 1, file) != 1) {
             fprintf(stderr, "Failed to read expected_index from %s\n", filename);
-            free_data(data);
+            free_data(read_data);
             goto cleanup;
         }
 
-        dataset->datas[i] = data;
+        read_dataset->datas[i] = read_data;
     }
 
     fclose(file);
 
-    return dataset;
+    return read_dataset;
 
 cleanup:
-    free_dataset(dataset);
+    free_dataset(read_dataset);
     fclose(file);
     return NULL;
 }
 
-void free_dataset(dataset_t *dataset) {
+void free_dataset(dataset *dataset) {
     if (!dataset) {
         return;
     }
@@ -96,7 +96,7 @@ void free_dataset(dataset_t *dataset) {
     free(dataset);
 }
 
-void free_data(data_t *data) {
+void free_data(data *data) {
     if (!data) {
         return;
     }
@@ -105,17 +105,17 @@ void free_data(data_t *data) {
     free(data);
 }
 
-data_t *get_data_copy(const data_t *data, size_t inputs_length) {
-    assert(data);
-    assert(data->inputs);
+data *get_data_copy(const data *source_data, size_t inputs_length) {
+    assert(source_data);
+    assert(source_data->inputs);
     assert(inputs_length > 0);
 
-    data_t *copy = malloc(sizeof(data_t));
+    data *copy = malloc(sizeof(data));
     if (!copy) {
         return NULL;
     }
 
-    copy->expected_index = data->expected_index;
+    copy->expected_index = source_data->expected_index;
 
     size_t inputs_size = sizeof(float) * inputs_length;
     copy->inputs = malloc(inputs_size);
@@ -124,12 +124,12 @@ data_t *get_data_copy(const data_t *data, size_t inputs_length) {
         return NULL;
     }
 
-    memcpy(copy->inputs, data->inputs, inputs_size);
+    memcpy(copy->inputs, source_data->inputs, inputs_size);
 
     return copy;
 }
 
-void rotate_data(data_t *data, int width, int height, float angle) {
+void rotate_data(data *data, int width, int height, float angle) {
     assert(data);
     assert(data->inputs);
     assert(width > 0 && height > 0);
@@ -161,7 +161,7 @@ void rotate_data(data_t *data, int width, int height, float angle) {
     data->inputs = new_inputs;
 }
 
-void scale_data(data_t *data, int width, int height, float scale) {
+void scale_data(data *data, int width, int height, float scale) {
     assert(data);
     assert(data->inputs);
     assert(width > 0 && height > 0);
@@ -195,7 +195,7 @@ void scale_data(data_t *data, int width, int height, float scale) {
     data->inputs = new_inputs;
 }
 
-void offset_data(data_t *data, int width, int height, float offset_x, float offset_y) {
+void offset_data(data *data, int width, int height, float offset_x, float offset_y) {
     assert(data);
     assert(data->inputs);
     assert(width > 0 && height > 0);
@@ -223,7 +223,7 @@ void offset_data(data_t *data, int width, int height, float offset_x, float offs
     data->inputs = new_inputs;
 }
 
-void noise_data(data_t *data, size_t inputs_length, float noise_factor, float probability) {
+void noise_data(data *data, size_t inputs_length, float noise_factor, float probability) {
     assert(data);
     assert(data->inputs);
     assert(inputs_length > 0);
@@ -239,7 +239,7 @@ void noise_data(data_t *data, size_t inputs_length, float noise_factor, float pr
     }
 }
 
-float output_expected(size_t index, const data_t *data) {
+float output_expected(size_t index, const data *data) {
     assert(data);
 
     if (index == data->expected_index) {

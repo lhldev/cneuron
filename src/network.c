@@ -31,67 +31,67 @@ void matrix_multiply(const float *a, const float *b, float *c, size_t rows_a, si
     }
 }
 
-layer_t *get_layer(size_t length, size_t prev_length) {
-    layer_t *layer = calloc(1, sizeof(layer_t));
-    if (!layer) {
+layer *get_layer(size_t length, size_t prev_length) {
+    layer *new_layer = calloc(1, sizeof(layer));
+    if (!new_layer) {
         return NULL;
     }
 
-    layer->length = length;
+    new_layer->length = length;
 
-    layer->weights = malloc(sizeof(float) * length * prev_length);
-    if (!layer->weights) {
-        free_layer(layer);
+    new_layer->weights = malloc(sizeof(float) * length * prev_length);
+    if (!new_layer->weights) {
+        free_layer(new_layer);
         return NULL;
     }
 
     for (size_t i = 0; i < length * prev_length; i++) {
-        layer->weights[i] = ((float)rand() / (float)RAND_MAX * 2.0f - 1.0f);
+        new_layer->weights[i] = ((float)rand() / (float)RAND_MAX * 2.0f - 1.0f);
     }
 
-    layer->delta = malloc(sizeof(float) * length);
-    if (!layer->delta) {
-        free_layer(layer);
+    new_layer->delta = malloc(sizeof(float) * length);
+    if (!new_layer->delta) {
+        free_layer(new_layer);
         return NULL;
     }
 
-    layer->bias = malloc(sizeof(float) * length);
-    if (!layer->bias) {
-        free_layer(layer);
+    new_layer->bias = malloc(sizeof(float) * length);
+    if (!new_layer->bias) {
+        free_layer(new_layer);
         return NULL;
     }
 
-    layer->output = malloc(sizeof(float) * length);
-    if (!layer->output) {
-        free_layer(layer);
+    new_layer->output = malloc(sizeof(float) * length);
+    if (!new_layer->output) {
+        free_layer(new_layer);
         return NULL;
     }
 
-    layer->weighted_input = malloc(sizeof(float) * length);
-    if (!layer->output) {
-        free_layer(layer);
+    new_layer->weighted_input = malloc(sizeof(float) * length);
+    if (!new_layer->output) {
+        free_layer(new_layer);
         return NULL;
     }
 
     for (size_t i = 0; i < length; i++) {
-        layer->delta[i] = 0.0f;
-        layer->bias[i] = 0.0f;
-        layer->output[i] = 0.0f;
-        layer->weighted_input[i] = 0.0f;
+        new_layer->delta[i] = 0.0f;
+        new_layer->bias[i] = 0.0f;
+        new_layer->output[i] = 0.0f;
+        new_layer->weighted_input[i] = 0.0f;
     }
 
-    return layer;
+    return new_layer;
 }
 
-neural_network_t *get_neural_network(size_t layer_length, const size_t *layer_lengths, size_t inputs_length, float (*activation_function)(float, bool)) {
+neural_network *get_neural_network(size_t layer_length, const size_t *layer_lengths, size_t inputs_length, float (*activation_function)(float, bool)) {
     assert(layer_lengths);
 
-    neural_network_t *nn = malloc(sizeof(neural_network_t));
+    neural_network *nn = malloc(sizeof(neural_network));
     if (!nn) {
         return NULL;
     }
 
-    nn->layers = calloc(layer_length, sizeof(layer_t));
+    nn->layers = calloc(layer_length, sizeof(layer));
     if (!nn->layers) {
         free(nn);
         return NULL;
@@ -117,7 +117,7 @@ neural_network_t *get_neural_network(size_t layer_length, const size_t *layer_le
     return nn;
 }
 
-void free_layer(layer_t *layer) {
+void free_layer(layer *layer) {
     if (!layer) {
         return;
     }
@@ -130,7 +130,7 @@ void free_layer(layer_t *layer) {
     free(layer);
 }
 
-void free_neural_network(neural_network_t *nn) {
+void free_neural_network(neural_network *nn) {
     if (!nn) {
         return;
     }
@@ -142,11 +142,11 @@ void free_neural_network(neural_network_t *nn) {
     free(nn);
 }
 
-void compute_network(neural_network_t *nn, const float *inputs) {
+void compute_network(neural_network *nn, const float *inputs) {
     assert(nn);
     assert(inputs);
 
-    layer_t *curr = nn->layers[0];
+    layer *curr = nn->layers[0];
     while (curr != NULL) {
         if (curr->prev_layer == NULL) {
             matrix_multiply(curr->weights, inputs, curr->weighted_input, curr->length, nn->inputs_length, 1);
@@ -161,13 +161,13 @@ void compute_network(neural_network_t *nn, const float *inputs) {
     }
 }
 
-float softmax(neural_network_t *nn, size_t neuron_index) {
+float softmax(neural_network *nn, size_t neuron_index) {
     assert(nn);
 
     float sum = 0.0f;
     float max_output = -INFINITY;
 
-    layer_t *output_layer = nn->layers[nn->length - 1];
+    layer *output_layer = nn->layers[nn->length - 1];
     for (size_t i = 0; i < output_layer->length; i++) {
         if (output_layer->output[i] > max_output) {
             max_output = output_layer->output[i];
@@ -181,10 +181,10 @@ float softmax(neural_network_t *nn, size_t neuron_index) {
     return expf(output_layer->output[neuron_index] - max_output) / sum;
 }
 
-void print_activation_percentages(neural_network_t *nn) {
+void print_activation_percentages(neural_network *nn) {
     assert(nn);
 
-    layer_t *output_layer = nn->layers[nn->length - 1];
+    layer *output_layer = nn->layers[nn->length - 1];
     float *percentages = malloc(sizeof(float) * output_layer->length);
     if (!percentages) {
         return;
@@ -231,15 +231,15 @@ void print_activation_percentages(neural_network_t *nn) {
     free(indices);
 }
 
-float cost(neural_network_t *nn, const dataset_t *test_dataset, size_t num_test) {
+float cost(neural_network *nn, const dataset *test_dataset, size_t num_test) {
     assert(nn);
     assert(test_dataset);
 
     float cost = 0.0f;
 
-    layer_t *output_layer = nn->layers[nn->length - 1];
+    layer *output_layer = nn->layers[nn->length - 1];
     for (size_t i = 0; i < num_test; i++) {
-        data_t *test_data = test_dataset->datas[rand() % test_dataset->length];
+        data *test_data = test_dataset->datas[rand() % test_dataset->length];
         compute_network(nn, test_data->inputs);
         for (size_t j = 0; j < output_layer->length; j++) {
             float output = output_layer->output[j];
@@ -249,23 +249,23 @@ float cost(neural_network_t *nn, const dataset_t *test_dataset, size_t num_test)
     return cost / num_test;
 }
 
-void print_result(neural_network_t *nn) {
+void print_result(neural_network *nn) {
     assert(nn);
 
-    layer_t *output_layer = nn->layers[nn->length - 1];
+    layer *output_layer = nn->layers[nn->length - 1];
     for (size_t i = 0; i < output_layer->length; i++) {
         printf("%f ", output_layer->output[i]);
     }
 }
 
-void layer_learn(neural_network_t *nn, size_t layer_index, float learn_rate, const data_t *data, float (*activation_function)(float, bool)) {
+void layer_learn(neural_network *nn, size_t layer_index, float learn_rate, const data *data, float (*activation_function)(float, bool)) {
     assert(nn);
     assert(data);
     assert(activation_function);
 
     if (layer_index == nn->length - 1) {
         // Output layer learn
-        layer_t *output_layer = nn->layers[layer_index];
+        layer *output_layer = nn->layers[layer_index];
         for (size_t i = 0; i < output_layer->length; i++) {
             float neuron_output = output_layer->output[i];
             float target_output = output_expected(i, data);
@@ -278,7 +278,7 @@ void layer_learn(neural_network_t *nn, size_t layer_index, float learn_rate, con
                     output_layer->weights[j * output_layer->length + i] -= output_layer->delta[i] * data->inputs[j] * learn_rate;
                 }
             } else {
-                layer_t *prev_layer = output_layer->prev_layer;
+                layer *prev_layer = output_layer->prev_layer;
                 for (size_t j = 0; j < prev_layer->length; j++) {
                     output_layer->weights[j * output_layer->length + i] -= output_layer->delta[i] * prev_layer->output[j] * learn_rate;
                 }
@@ -288,9 +288,9 @@ void layer_learn(neural_network_t *nn, size_t layer_index, float learn_rate, con
         }
     } else {
         // Intermediate layer learn
-        layer_t *curr_layer = nn->layers[layer_index];
-        layer_t *prev_layer = curr_layer->prev_layer;
-        layer_t *next_layer = curr_layer->next_layer;
+        layer *curr_layer = nn->layers[layer_index];
+        layer *prev_layer = curr_layer->prev_layer;
+        layer *next_layer = curr_layer->next_layer;
         for (size_t i = 0; i < curr_layer->length; i++) {
             curr_layer->delta[i] = 0.0f;
             for (size_t j = 0; j < next_layer->length; j++) {
@@ -316,7 +316,7 @@ void layer_learn(neural_network_t *nn, size_t layer_index, float learn_rate, con
     }
 }
 
-void learn(neural_network_t *nn, float learn_rate, const data_t *data) {
+void learn(neural_network *nn, float learn_rate, const data *data) {
     assert(nn);
     assert(data);
 
@@ -326,7 +326,7 @@ void learn(neural_network_t *nn, float learn_rate, const data_t *data) {
     }
 }
 
-bool save_network(const char *filename, neural_network_t *nn) {
+bool save_network(const char *filename, neural_network *nn) {
     assert(filename);
     assert(nn);
 
@@ -357,7 +357,7 @@ bool save_network(const char *filename, neural_network_t *nn) {
     return true;
 }
 
-bool load_network(const char *filename, neural_network_t *nn) {
+bool load_network(const char *filename, neural_network *nn) {
     assert(filename);
     assert(nn);
 
@@ -413,7 +413,7 @@ cleanup:
     return false;
 }
 
-float test_network_percent(neural_network_t *nn, const dataset_t *test_dataset) {
+float test_network_percent(neural_network *nn, const dataset *test_dataset) {
     assert(nn);
     assert(test_dataset);
 

@@ -54,7 +54,7 @@ target_link_libraries(tests PRIVATE m libcneuron GTest::gtest_main)
 
 add_test(NAME tests COMMAND tests)
 
-message(STATUS "Checking and copying data and input.py to the build directory...")
+message(STATUS "Copying data and input.py to the build directory...")
 file(COPY ${CMAKE_SOURCE_DIR}/data ${CMAKE_SOURCE_DIR}/input.py DESTINATION ${CMAKE_BINARY_DIR})
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/output)
 

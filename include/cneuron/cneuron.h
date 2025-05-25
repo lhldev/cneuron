@@ -10,7 +10,7 @@
 typedef struct {
     float *inputs;         /**< Pointer to an array of input values. */
     size_t expected_index; /**< Index of the expected output label. */
-} data_t;
+} data;
 
 /**
  * @brief Represents a dataset that contains multiple data elements.
@@ -18,39 +18,48 @@ typedef struct {
 typedef struct {
     size_t length;        /**< Number of data elements in the dataset. */
     size_t inputs_length; /**< Number of input values per data element. */
-    data_t **datas;       /**< Array of pointers containing the datas */
-} dataset_t;
+    data **datas;         /**< Array of pointers containing the datas */
+} dataset;
 
 /**
  * @brief Reads a dataset from the specified file.
  *
  * @param filename Path to the file containing the dataset.
- * @return Pointer to the loaded 'dataset_t' structure, or NULL if an error occurs.
+ * @return Pointer to the loaded 'dataset' structure, or NULL if an error occurs.
  */
-dataset_t *get_dataset(const char *filename);
+dataset *get_dataset(const char *filename);
 
 /**
- * @brief Frees all memory associated with a 'dataset_t' structure and its contents.
+ * @brief Frees all memory associated with a 'dataset' structure and its contents.
  *
  * @param dataset Pointer to the dataset to be freed.
  */
-void free_dataset(dataset_t *dataset);
+void free_dataset(dataset *dataset);
 
 /**
- * @brief Frees all memory associated with a 'data_t' structure and its conetents.
+ * @brief Frees all memory associated with a 'data' structure and its conetents.
  *
  * @param data Pointer to the data element to be freed.
  */
-void free_data(data_t *data);
+void free_data(data *data);
 
 /**
- * @brief Creates a copy of a 'data_t' structure.
+ * @brief Creates a copy of a 'data' structure.
  *
- * @param data Pointer to the original data element to copy.
+ * @param source_data Pointer to the original data element to copy.
  * @param inputs_length Number of input values in the data element.
- * @return Pointer to the newly created copy of the 'data_t' structure.
+ * @return Pointer to the newly created copy of the 'data' structure.
  */
-data_t *get_data_copy(const data_t *data, size_t inputs_length);
+data *get_data_copy(const data *source_data, size_t inputs_length);
+
+/**
+ * @brief Creates allocate new dataset and select random copy of data from a source dataset.
+ *
+ * @param source_dataset Pointer to the source dataset.
+ * @param amount Number of data to be created in the new dataset.
+ * @return Pointer to the newly created 'dataset' structure.
+ */
+dataset *get_random_dataset_sample(const dataset *source_dataset, size_t amount);
 
 /**
  * @brief Rotates the data by a specified angle.
@@ -60,7 +69,7 @@ data_t *get_data_copy(const data_t *data, size_t inputs_length);
  * @param height Height of the data.
  * @param angle Rotation angle in degrees.
  */
-void rotate_data(data_t *data, int width, int height, float angle);
+void rotate_data(data *data, int width, int height, float angle);
 
 /**
  * @brief Scales the data by a specified factor.
@@ -70,7 +79,7 @@ void rotate_data(data_t *data, int width, int height, float angle);
  * @param height Height of the data.
  * @param scale Scaling factor.
  */
-void scale_data(data_t *data, int width, int height, float scale);
+void scale_data(data *data, int width, int height, float scale);
 
 /**
  * @brief Applies an offset to the data in both x and y directions.
@@ -81,7 +90,7 @@ void scale_data(data_t *data, int width, int height, float scale);
  * @param offset_x Offset value in the x-direction.
  * @param offset_y Offset value in the y-direction.
  */
-void offset_data(data_t *data, int width, int height, float offset_x, float offset_y);
+void offset_data(data *data, int width, int height, float offset_x, float offset_y);
 
 /**
  * @brief Adds noise to the data with a given intensity and probability.
@@ -91,7 +100,7 @@ void offset_data(data_t *data, int width, int height, float offset_x, float offs
  * @param noise_factor Intensity of the noise to be added.
  * @param probability Probability of adding noise to each input value.
  */
-void noise_data(data_t *data, size_t inputs_length, float noise_factor, float probability);
+void noise_data(data *data, size_t inputs_length, float noise_factor, float probability);
 
 /**
  * @brief Computes the expected output value for the data element.
@@ -100,7 +109,7 @@ void noise_data(data_t *data, size_t inputs_length, float noise_factor, float pr
  * @param data Pointer to the data element.
  * @return Floating-point value representing the expected output.
  */
-float output_expected(size_t index, const data_t *data);
+float output_expected(size_t index, const data *data);
 
 /**
  * @brief Represents a single layer in a neural network.
@@ -114,17 +123,17 @@ typedef struct layer {
     struct layer *prev_layer; /**< Pointer to the previous layer in the network. */
     struct layer *next_layer; /**< Pointer to the next layer in the network. */
     size_t length;            /**< Number of neurons in this layer. */
-} layer_t;
+} layer;
 
 /**
  * @brief Represents a neural network with multiple layers.
  */
 typedef struct {
-    layer_t **layers;                          /**< Array of pointers to layers in the network. */
+    layer **layers;                            /**< Array of pointers to layers in the network. */
     size_t length;                             /**< Number of layers in the network. */
     size_t inputs_length;                      /**< Number of inputs to the network. */
     float (*activation_function)(float, bool); /**< Pointer to the activation function used in the network. */
-} neural_network_t;
+} neural_network;
 
 /**
  * @brief Generates a random floating-point number within a given range.
@@ -154,7 +163,7 @@ void matrix_multiply(const float *a, const float *b, float *c, size_t rows_a, si
  * @param prev_length Number of neurons in the previous layer.
  * @return Pointer to the newly created layer.
  */
-layer_t *get_layer(size_t length, size_t prev_length);
+layer *get_layer(size_t length, size_t prev_length);
 
 /**
  * @brief Allocates and initializes a new neural network.
@@ -165,21 +174,21 @@ layer_t *get_layer(size_t length, size_t prev_length);
  * @param activation_function Activation function to be used in the network.
  * @return Pointer to the newly created neural network.
  */
-neural_network_t *get_neural_network(size_t layer_length, const size_t *layer_lengths, size_t inputs_length, float (*activation_function)(float, bool));
+neural_network *get_neural_network(size_t layer_length, const size_t *layer_lengths, size_t inputs_length, float (*activation_function)(float, bool));
 
 /**
- * @brief Frees all memory associated with a 'layer_t' structure and its conetents.
+ * @brief Frees all memory associated with a 'layer' structure and its conetents.
  *
  * @param layer Pointer to the layer to be freed.
  */
-void free_layer(layer_t *layer);
+void free_layer(layer *layer);
 
 /**
- * @brief Frees all memory associated with a 'neural_network_t' structure and its conetents.
+ * @brief Frees all memory associated with a 'neural_network' structure and its conetents.
  *
  * @param nn Pointer to the neural network to be freed.
  */
-void free_neural_network(neural_network_t *nn);
+void free_neural_network(neural_network *nn);
 
 /**
  * @brief Computes the output of the neural network for the given inputs.
@@ -189,7 +198,7 @@ void free_neural_network(neural_network_t *nn);
  *
  * @note The weights and biases are automatically initialized when the network is created using 'get_neural_network'. Ensure the network is created properly before calling this function.
  */
-void compute_network(neural_network_t *nn, const float *inputs);
+void compute_network(neural_network *nn, const float *inputs);
 
 /**
  * @brief Applies the softmax function for a specific neuron in the output layer.
@@ -198,14 +207,14 @@ void compute_network(neural_network_t *nn, const float *inputs);
  * @param neuron_index Index of the neuron to compute the softmax value for.
  * @return The softmax value for the specified neuron.
  */
-float softmax(neural_network_t *nn, size_t neuron_index);
+float softmax(neural_network *nn, size_t neuron_index);
 
 /**
  * @brief Prints the activation percentages of neurons in the network.
  *
  * @param nn Pointer to the neural network.
  */
-void print_activation_percentages(neural_network_t *nn);
+void print_activation_percentages(neural_network *nn);
 
 /**
  * @brief Computes the cost (loss) of the neural network on a test dataset.
@@ -215,7 +224,7 @@ void print_activation_percentages(neural_network_t *nn);
  * @param num_test Number of test samples to evaluate.
  * @return The computed cost value.
  */
-float cost(neural_network_t *nn, const dataset_t *test_dataset, size_t num_test);
+float cost(neural_network *nn, const dataset *test_dataset, size_t num_test);
 
 /**
  * @brief Performs learning (backpropagation) for a specific layer.
@@ -228,10 +237,24 @@ float cost(neural_network_t *nn, const dataset_t *test_dataset, size_t num_test)
  *
  * @note The network must be computed using 'compute_network' prior to calling this function.
  */
-void layer_learn(neural_network_t *nn, size_t layer_index, float learn_rate, const data_t *data, float (*activation_function)(float, bool));
+void layer_learn(neural_network *nn, size_t layer_index, float learn_rate, const data *data, float (*activation_function)(float, bool));
 
 /**
- * @brief Performs learning (backpropagation) for the entire network.
+ * @brief Performs backpropagation for a specific layer but add the change in gradient to a array.
+ *
+ * @param nn Pointer to the neural network.
+ * @param layer_index Index of the layer to perform backpropagation on.
+ * @param layer_weights_gradients Pointer to an array of weights to be added to.
+ * @param layer_weights_bias Pointer to an array of bias to be added to.
+ * @param data Pointer to the data element used for learning.
+ * @param activation_function Pointer to the activation function.
+ *
+ * @note The network must be computed using 'compute_network' prior to calling this function.
+ */
+void layer_learn_collect_gradient(neural_network *nn, float *layer_weights_gradients, float *layer_bias_gradients, size_t layer_index, const data *data, float (*activation_function)(float, bool));
+
+/**
+ * @brief Performs stochastic gradient descent to the network.
  *
  * @param nn Pointer to the neural network.
  * @param learn_rate Learning rate for weight updates.
@@ -239,7 +262,18 @@ void layer_learn(neural_network_t *nn, size_t layer_index, float learn_rate, con
  *
  * @note The network must be computed using 'compute_network' prior to calling this function.
  */
-void learn(neural_network_t *nn, float learn_rate, const data_t *data);
+void learn(neural_network *nn, float learn_rate, const data *data);
+
+/**
+ * @brief Performs mini-batch gradient decent to the network.
+ *
+ * @param nn Pointer to the neural network.
+ * @param learn_rate Learning rate for weight updates.
+ * @param dataset Pointer to the dataset used for gradient decent.
+ *
+ * @note The network must be computed using 'compute_network' prior to calling this function.
+ */
+void mini_batch_gd(neural_network *nn, float learn_rate, const dataset *dataset, size_t batch_size);
 
 /**
  * @brief Saves the neural network to a file.
@@ -248,7 +282,7 @@ void learn(neural_network_t *nn, float learn_rate, const data_t *data);
  * @param nn Pointer to the neural network to save.
  * @return True if the network was successfully saved, false otherwise.
  */
-bool save_network(const char *filename, neural_network_t *nn);
+bool save_network(const char *filename, neural_network *nn);
 
 /**
  * @brief Loads a neural network from a file.
@@ -257,7 +291,7 @@ bool save_network(const char *filename, neural_network_t *nn);
  * @param nn Pointer to the neural network structure to load into.
  * @return True if the network was successfully loaded, false otherwise.
  */
-bool load_network(const char *filename, neural_network_t *nn);
+bool load_network(const char *filename, neural_network *nn);
 
 /**
  * @brief Tests the accuracy of the neural network on a test dataset.
@@ -266,6 +300,6 @@ bool load_network(const char *filename, neural_network_t *nn);
  * @param test_dataset Pointer to the test dataset.
  * @return The percentage of correct predictions.
  */
-float test_network_percent(neural_network_t *nn, const dataset_t *test_dataset);
+float test_network_percent(neural_network *nn, const dataset *test_dataset);
 
 #endif

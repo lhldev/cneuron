@@ -8,7 +8,7 @@
 
 #include "cneuron/cneuron.h"
 
-#define IMAGE_SIZE 28
+const size_t IMAGE_SIZE = 28;
 
 float sigmoid(float val, bool is_deravative) {
     float result = 1.0f / (1.0f + expf(-val));
@@ -25,7 +25,7 @@ float relu(float val, bool is_deravative) {
     return fmax(0.0f, val);
 }
 
-void train(neural_network_t *nn, dataset_t *dataset, dataset_t *test_dataset, float learn_rate, int learn_amount, int log_amount) {
+void train(neural_network *nn, dataset *train_dataset, dataset *test_dataset, float learn_rate, int learn_amount, int log_amount) {
     clock_t start_time = clock();
     for (int i = 0; i < learn_amount; i++) {
         if (i % log_amount == 0 && i != 0) {
@@ -36,26 +36,26 @@ void train(neural_network_t *nn, dataset_t *dataset, dataset_t *test_dataset, fl
             printf("Learned: %d, cost: %f, elapsed time: %.2fs, speed: %.2f Data/s\n", i, new_cost, elapsed_s, speed);
             start_time = clock();
         }
-        data_t *data = get_data_copy(dataset->datas[rand() % dataset->length], IMAGE_SIZE * IMAGE_SIZE);
-        rotate_data(data, IMAGE_SIZE, IMAGE_SIZE, random_float(-5.0f, 5.0f));
-        scale_data(data, IMAGE_SIZE, IMAGE_SIZE, random_float(0.9f, 1.1f));
-        offset_data(data, IMAGE_SIZE, IMAGE_SIZE, random_float(-3.0f, 3.0f), random_float(-3.0f, 3.0f));
-        noise_data(data, IMAGE_SIZE * IMAGE_SIZE, 0.3f, 0.08f);
-        learn(nn, learn_rate, data);
-        free_data(data);
+        data *tmp_data = get_data_copy(train_dataset->datas[rand() % train_dataset->length], IMAGE_SIZE * IMAGE_SIZE);
+        rotate_data(tmp_data, IMAGE_SIZE, IMAGE_SIZE, random_float(-5.0f, 5.0f));
+        scale_data(tmp_data, IMAGE_SIZE, IMAGE_SIZE, random_float(0.9f, 1.1f));
+        offset_data(tmp_data, IMAGE_SIZE, IMAGE_SIZE, random_float(-3.0f, 3.0f), random_float(-3.0f, 3.0f));
+        noise_data(tmp_data, IMAGE_SIZE * IMAGE_SIZE, 0.3f, 0.08f);
+        learn(nn, learn_rate, tmp_data);
+        free_data(tmp_data);
     }
 }
 
-dataset_t *get_mnist(bool is_test) {
+dataset *get_mnist(bool is_test) {
     char dir[512];
     snprintf(dir, sizeof(dir), "data/mnist/%s", is_test ? "test" : "train");
 
-    dataset_t **datasets = malloc(sizeof(dataset_t *) * 10);
+    dataset **datasets = malloc(sizeof(dataset *) * 10);
 
     for (size_t i = 0; i <= 9; i++) {
         char filepath[518];
         snprintf(filepath, sizeof(filepath), "%s/%zu.dat", dir, i);
-        dataset_t *read_dataset = get_dataset(filepath);
+        dataset *read_dataset = get_dataset(filepath);
         if (!read_dataset) {
             printf("Failed to load mnist dataset for digit %zu\n", i);
             return NULL;
@@ -69,15 +69,15 @@ dataset_t *get_mnist(bool is_test) {
         total_length += datasets[i]->length;
     }
 
-    dataset_t *dataset = malloc(sizeof(dataset_t));
-    dataset->datas = malloc(sizeof(data_t *) * total_length);
-    dataset->length = total_length;
-    dataset->inputs_length = IMAGE_SIZE * IMAGE_SIZE;
+    dataset *mnist_dataset = malloc(sizeof(dataset));
+    mnist_dataset->datas = malloc(sizeof(data *) * total_length);
+    mnist_dataset->length = total_length;
+    mnist_dataset->inputs_length = IMAGE_SIZE * IMAGE_SIZE;
 
     size_t curr_count = 0;
     for (size_t i = 0; i < 10; i++) {
         for (size_t j = 0; j < datasets[i]->length; j++) {
-            dataset->datas[curr_count] = datasets[i]->datas[j];
+            mnist_dataset->datas[curr_count] = datasets[i]->datas[j];
             curr_count++;
         }
 
@@ -85,26 +85,26 @@ dataset_t *get_mnist(bool is_test) {
         free(datasets[i]);
     }
 
-    if (curr_count != dataset->length) {
-        printf("Error reading all mnist data. Read: %zu, Expected: %zu\n", curr_count, dataset->length);
+    if (curr_count != mnist_dataset->length) {
+        printf("Error reading all mnist data. Read: %zu, Expected: %zu\n", curr_count, mnist_dataset->length);
     }
 
     free(datasets);
 
-    return dataset;
+    return mnist_dataset;
 }
 
 int main() {
     srand(time(NULL));
-    dataset_t *dataset = get_mnist(false);
-    dataset_t *test_dataset = get_mnist(true);
+    dataset *train_dataset = get_mnist(false);
+    dataset *test_dataset = get_mnist(true);
     size_t network_length = 3;
     size_t *layer_lengths = malloc(sizeof(size_t) * network_length);
     layer_lengths[0] = 100;
     layer_lengths[1] = 16;
     layer_lengths[2] = 10;
 
-    neural_network_t *nn = get_neural_network(network_length, layer_lengths, dataset->inputs_length, &sigmoid);
+    neural_network *nn = get_neural_network(network_length, layer_lengths, train_dataset->inputs_length, &sigmoid);
 
     // Parameters
     float learn_rate = 0.03f;
@@ -131,7 +131,7 @@ int main() {
                 printf("Neural network loaded!\n");
             }
         } else if (cmd[0] == 't') {
-            train(nn, dataset, test_dataset, learn_rate, learn_amount, log_amount);
+            train(nn, train_dataset, test_dataset, learn_rate, learn_amount, log_amount);
             printf("Training completed. Trained for %d times.\n", learn_amount);
         } else if (cmd[0] == 'T') {
             printf("Testing neural network...\n");
@@ -163,7 +163,7 @@ int main() {
                 float generic_float = 0.0;
                 int count = 0;
                 while (fscanf(fp, "%f", &generic_float) == 1) {
-                    if (count >= IMAGE_SIZE * IMAGE_SIZE) {
+                    if ((size_t)count >= IMAGE_SIZE * IMAGE_SIZE) {
                         fprintf(stderr, "Error parsing input\n");
                         break;
                     }
@@ -181,7 +181,7 @@ int main() {
             continue;
         }
     }
-    free_dataset(dataset);
+    free_dataset(train_dataset);
     free_dataset(test_dataset);
     free_neural_network(nn);
     free(layer_lengths);
