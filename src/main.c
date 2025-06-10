@@ -25,24 +25,27 @@ float relu(float val, bool is_deravative) {
     return fmax(0.0f, val);
 }
 
-void train(neural_network *nn, dataset *train_dataset, dataset *test_dataset, float learn_rate, int learn_amount, int log_amount) {
+void train(neural_network *nn, dataset *train_dataset, dataset *test_dataset, float learn_rate, int batch_amount, int log_amount, size_t batch_size) {
     clock_t start_time = clock();
-    for (int i = 0; i < learn_amount; i++) {
+    for (int i = 0; i < batch_amount; i++) {
         if (i % log_amount == 0 && i != 0) {
             float new_cost = cost(nn, test_dataset, 100);
             clock_t elapsed_ms = clock() - start_time;
             float elapsed_s = (float)elapsed_ms / CLOCKS_PER_SEC;
-            float speed = (float)log_amount / elapsed_s;
-            printf("Learned: %d, cost: %f, elapsed time: %.2fs, speed: %.2f Data/s\n", i, new_cost, elapsed_s, speed);
+            float speed = (float)log_amount * batch_size / elapsed_s;
+            printf("Learned: %zu, cost: %f, elapsed time: %.2fs, speed: %.2f Data/s\n", i * batch_size, new_cost, elapsed_s, speed);
             start_time = clock();
         }
-        data *tmp_data = get_data_copy(train_dataset->datas[rand() % train_dataset->length], IMAGE_SIZE * IMAGE_SIZE);
-        rotate_data(tmp_data, IMAGE_SIZE, IMAGE_SIZE, random_float(-5.0f, 5.0f));
-        scale_data(tmp_data, IMAGE_SIZE, IMAGE_SIZE, random_float(0.9f, 1.1f));
-        offset_data(tmp_data, IMAGE_SIZE, IMAGE_SIZE, random_float(-3.0f, 3.0f), random_float(-3.0f, 3.0f));
-        noise_data(tmp_data, IMAGE_SIZE * IMAGE_SIZE, 0.3f, 0.08f);
-        learn(nn, learn_rate, tmp_data);
-        free_data(tmp_data);
+        dataset *batch_dataset = get_random_dataset_sample(train_dataset, batch_size);
+        for (size_t i = 0; i < batch_dataset->length; i++) {
+            data *data = batch_dataset->datas[i];
+            rotate_data(data, IMAGE_SIZE, IMAGE_SIZE, random_float(-5.0f, 5.0f));
+            scale_data(data, IMAGE_SIZE, IMAGE_SIZE, random_float(0.9f, 1.1f));
+            offset_data(data, IMAGE_SIZE, IMAGE_SIZE, random_float(-3.0f, 3.0f), random_float(-3.0f, 3.0f));
+            noise_data(data, IMAGE_SIZE * IMAGE_SIZE, 0.3f, 0.08f);
+        }
+        mini_batch_gd(nn, learn_rate, batch_dataset);
+        free_dataset(batch_dataset);
     }
 }
 
@@ -107,9 +110,11 @@ int main() {
     neural_network *nn = get_neural_network(network_length, layer_lengths, train_dataset->inputs_length, &sigmoid);
 
     // Parameters
-    float learn_rate = 0.03f;
-    int learn_amount = 40000;
-    int log_amount = 2000;
+    float learn_rate = 1.5f;
+    size_t batch_size = 30;
+    int learn_amount = 150000;
+    int batch_amount = learn_amount / batch_size;
+    int log_amount = 200;  // Log once reached a number of batch
 
     char cmd[100];
     FILE *fp;
@@ -131,7 +136,7 @@ int main() {
                 printf("Neural network loaded!\n");
             }
         } else if (cmd[0] == 't') {
-            train(nn, train_dataset, test_dataset, learn_rate, learn_amount, log_amount);
+            train(nn, train_dataset, test_dataset, learn_rate, batch_amount, log_amount, batch_size);
             printf("Training completed. Trained for %d times.\n", learn_amount);
         } else if (cmd[0] == 'T') {
             printf("Testing neural network...\n");

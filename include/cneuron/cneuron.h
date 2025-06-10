@@ -112,6 +112,38 @@ void noise_data(data *data, size_t inputs_length, float noise_factor, float prob
 float output_expected(size_t index, const data *data);
 
 /**
+ * @brief Multiplies two matrices stored in column-major format.
+ *
+ * @param a Pointer to the first matrix.
+ * @param b Pointer to the second matrix.
+ * @param c Pointer to the resulting matrix.
+ * @param rows_a Number of rows in matrix 'a'.
+ * @param cols_a Number of columns in matrix 'a' (also rows in matrix 'b').
+ * @param cols_b Number of columns in matrix 'b'.
+ */
+void matrix_multiply(const float *a, const float *b, float *c, size_t rows_a, size_t cols_a, size_t cols_b);
+
+/**
+ * @brief Apply activation to a vector.
+ *
+ * @param a Pointer to the vector.
+ * @param b Pointer to the resulting vector.
+ * @param length Number of element in vector 'a'.
+ * @param activation_function Activation function used to apply activation.
+ */
+void vector_apply_activation(const float *a, float *b, size_t length, float (*activation_function)(float, bool));
+
+/**
+ * @brief Add two vector together.
+ *
+ * @param a Pointer to the first vector.
+ * @param b Pointer to the second vector.
+ * @param c Pointer to the resulting vector.
+ * @param length Number of element in both vector.
+ */
+void vector_add(const float *a, const float *b, float *c, size_t length);
+
+/**
  * @brief Represents a single layer in a neural network.
  */
 typedef struct layer {
@@ -143,18 +175,6 @@ typedef struct {
  * @return A random float between min and max.
  */
 float random_float(float min, float max);
-
-/**
- * @brief Multiplies two matrices stored in column-major format.
- *
- * @param a Pointer to the first matrix.
- * @param b Pointer to the second matrix.
- * @param c Pointer to the resulting matrix.
- * @param rows_a Number of rows in matrix 'a'.
- * @param cols_a Number of columns in matrix 'a' (also rows in matrix 'b').
- * @param cols_b Number of columns in matrix 'b'.
- */
-void matrix_multiply(const float *a, const float *b, float *c, size_t rows_a, size_t cols_a, size_t cols_b);
 
 /**
  * @brief Allocates and initializes a new layer.
@@ -194,7 +214,7 @@ void free_neural_network(neural_network *nn);
  * @brief Computes the output of the neural network for the given inputs.
  *
  * @param nn Pointer to the neural network.
- * @param inputs Array of input values.
+ * @param inputs The inputs to compute.
  *
  * @note The weights and biases are automatically initialized when the network is created using 'get_neural_network'. Ensure the network is created properly before calling this function.
  */
@@ -262,18 +282,18 @@ void layer_learn_collect_gradient(neural_network *nn, float *layer_weights_gradi
  *
  * @note The network must be computed using 'compute_network' prior to calling this function.
  */
-void learn(neural_network *nn, float learn_rate, const data *data);
+void stochastic_gd(neural_network *nn, float learn_rate, const data *data);
 
 /**
  * @brief Performs mini-batch gradient decent to the network.
  *
  * @param nn Pointer to the neural network.
  * @param learn_rate Learning rate for weight updates.
- * @param dataset Pointer to the dataset used for gradient decent.
+ * @param data_batch Pointer to the dataset used for gradient decent.
  *
  * @note The network must be computed using 'compute_network' prior to calling this function.
  */
-void mini_batch_gd(neural_network *nn, float learn_rate, const dataset *dataset, size_t batch_size);
+void mini_batch_gd(neural_network *nn, float learn_rate, const dataset *data_batch);
 
 /**
  * @brief Saves the neural network to a file.

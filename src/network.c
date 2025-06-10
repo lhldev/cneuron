@@ -15,22 +15,6 @@ float random_float(float min, float max) {
     return (float)rand() / (float)RAND_MAX * (max - min) + min;
 }
 
-void matrix_multiply(const float *a, const float *b, float *c, size_t rows_a, size_t cols_a, size_t cols_b) {
-    assert(a);
-    assert(b);
-    assert(c);
-
-    for (size_t col = 0; col < cols_b; ++col) {
-        for (size_t row = 0; row < rows_a; ++row) {
-            float sum = 0.0f;
-            for (size_t k = 0; k < cols_a; ++k) {
-                sum += a[k * rows_a + row] * b[col * cols_a + k];
-            }
-            c[col * rows_a + row] = sum;
-        }
-    }
-}
-
 layer *get_layer(size_t length, size_t prev_length) {
     layer *new_layer = calloc(1, sizeof(layer));
     if (!new_layer) {
@@ -49,35 +33,28 @@ layer *get_layer(size_t length, size_t prev_length) {
         new_layer->weights[i] = ((float)rand() / (float)RAND_MAX * 2.0f - 1.0f);
     }
 
-    new_layer->delta = malloc(sizeof(float) * length);
+    new_layer->delta = calloc(length, sizeof(float));
     if (!new_layer->delta) {
         free_layer(new_layer);
         return NULL;
     }
 
-    new_layer->bias = malloc(sizeof(float) * length);
+    new_layer->bias = calloc(length, sizeof(float));
     if (!new_layer->bias) {
         free_layer(new_layer);
         return NULL;
     }
 
-    new_layer->output = malloc(sizeof(float) * length);
+    new_layer->output = calloc(length, sizeof(float));
     if (!new_layer->output) {
         free_layer(new_layer);
         return NULL;
     }
 
-    new_layer->weighted_input = malloc(sizeof(float) * length);
+    new_layer->weighted_input = calloc(length, sizeof(float));
     if (!new_layer->output) {
         free_layer(new_layer);
         return NULL;
-    }
-
-    for (size_t i = 0; i < length; i++) {
-        new_layer->delta[i] = 0.0f;
-        new_layer->bias[i] = 0.0f;
-        new_layer->output[i] = 0.0f;
-        new_layer->weighted_input[i] = 0.0f;
     }
 
     return new_layer;
@@ -91,6 +68,7 @@ neural_network *get_neural_network(size_t layer_length, const size_t *layer_leng
         return NULL;
     }
 
+    // Use calloc for freeing when error
     nn->layers = calloc(layer_length, sizeof(layer));
     if (!nn->layers) {
         free(nn);
@@ -153,10 +131,9 @@ void compute_network(neural_network *nn, const float *inputs) {
         } else {
             matrix_multiply(curr->weights, curr->prev_layer->output, curr->weighted_input, curr->length, curr->prev_layer->length, 1);
         }
-        for (size_t i = 0; i < curr->length; i++) {
-            curr->weighted_input[i] += curr->bias[i];
-            curr->output[i] = nn->activation_function(curr->weighted_input[i], 0);
-        }
+
+        vector_add(curr->bias, curr->weighted_input, curr->weighted_input, curr->length);
+        vector_apply_activation(curr->weighted_input, curr->output, curr->length, nn->activation_function);
         curr = curr->next_layer;
     }
 }
@@ -270,7 +247,7 @@ void layer_learn(neural_network *nn, size_t layer_index, float learn_rate, const
             float neuron_output = output_layer->output[i];
             float target_output = output_expected(i, data);
 
-            output_layer->delta[i] = 2 * (neuron_output - target_output) * activation_function(output_layer->weighted_input[i], true);
+            output_layer->delta[i] = 2.0f * (neuron_output - target_output) * activation_function(output_layer->weighted_input[i], true);
 
             // If output_layer is the only layer use data as prev_layer
             if (nn->length == 1) {
@@ -316,7 +293,65 @@ void layer_learn(neural_network *nn, size_t layer_index, float learn_rate, const
     }
 }
 
-void learn(neural_network *nn, float learn_rate, const data *data) {
+void layer_learn_collect_gradient(neural_network *nn, float *layer_weights_gradients, float *layer_bias_gradients, size_t layer_index, const data *data, float (*activation_function)(float, bool)) {
+    assert(nn);
+    assert(data);
+    assert(activation_function);
+
+    if (layer_index == nn->length - 1) {
+        // Output layer learn
+        layer *output_layer = nn->layers[layer_index];
+        for (size_t i = 0; i < output_layer->length; i++) {
+            float neuron_output = output_layer->output[i];
+            float target_output = output_expected(i, data);
+
+            output_layer->delta[i] = 2.0f * (neuron_output - target_output) * activation_function(output_layer->weighted_input[i], true);
+
+            // If output_layer is the only layer use data as prev_layer
+            if (nn->length == 1) {
+                for (size_t j = 0; j < nn->inputs_length; j++) {
+                    layer_weights_gradients[j * output_layer->length + i] += output_layer->delta[i] * data->inputs[j];
+                }
+            } else {
+                layer *prev_layer = output_layer->prev_layer;
+                for (size_t j = 0; j < prev_layer->length; j++) {
+                    layer_weights_gradients[j * output_layer->length + i] += output_layer->delta[i] * prev_layer->output[j];
+                }
+            }
+
+            layer_bias_gradients[i] += output_layer->delta[i];
+        }
+    } else {
+        // Intermediate layer learn
+        layer *curr_layer = nn->layers[layer_index];
+        layer *prev_layer = curr_layer->prev_layer;
+        layer *next_layer = curr_layer->next_layer;
+        for (size_t i = 0; i < curr_layer->length; i++) {
+            curr_layer->delta[i] = 0.0f;
+            for (size_t j = 0; j < next_layer->length; j++) {
+                float weight_next_neuron = next_layer->weights[i * next_layer->length + j];
+                float delta_next_neuron = next_layer->delta[j];
+                curr_layer->delta[i] += weight_next_neuron * delta_next_neuron * activation_function(curr_layer->weighted_input[i], true);
+            }
+
+            if (prev_layer != NULL) {
+                for (size_t j = 0; j < prev_layer->length; j++) {
+                    float input = prev_layer->output[j];
+                    layer_weights_gradients[j * curr_layer->length + i] += curr_layer->delta[i] * input;
+                }
+            } else {
+                for (size_t j = 0; j < nn->inputs_length; j++) {
+                    float input = data->inputs[j];
+                    layer_weights_gradients[j * curr_layer->length + i] += curr_layer->delta[i] * input;
+                }
+            }
+
+            layer_bias_gradients[i] += curr_layer->delta[i];
+        }
+    }
+}
+
+void stochastic_gd(neural_network *nn, float learn_rate, const data *data) {
     assert(nn);
     assert(data);
 
@@ -324,6 +359,43 @@ void learn(neural_network *nn, float learn_rate, const data *data) {
     for (size_t i = 0; i < nn->length; i++) {
         layer_learn(nn, nn->length - i - 1, learn_rate, data, nn->activation_function);
     }
+}
+
+void mini_batch_gd(neural_network *nn, float learn_rate, const dataset *data_batch) {
+    assert(nn);
+    assert(data_batch);
+
+    float **weights_gradients = malloc(sizeof(float *) * nn->length);
+    float **bias_gradients = malloc(sizeof(float *) * nn->length);
+
+    for (size_t i = 0; i < nn->length; i++) {
+        weights_gradients[i] = calloc(nn->layers[i]->length * ((i == 0) ? nn->inputs_length : nn->layers[i - 1]->length), sizeof(float));
+        bias_gradients[i] = calloc(nn->layers[i]->length, sizeof(float));
+    }
+
+    for (size_t i = 0; i < data_batch->length; i++) {
+        data *data = data_batch->datas[i];
+        compute_network(nn, data->inputs);
+        for (size_t j = 0; j < nn->length; j++) {
+            size_t layer_index = nn->length - j - 1;
+            layer_learn_collect_gradient(nn, weights_gradients[layer_index], bias_gradients[layer_index], layer_index, data, nn->activation_function);
+        }
+    }
+
+    for (size_t i = 0; i < nn->length; i++) {
+        for (size_t j = 0; j < nn->layers[i]->length * ((i == 0) ? nn->inputs_length : nn->layers[i - 1]->length); j++) {
+            nn->layers[i]->weights[j] -= weights_gradients[i][j] / data_batch->length * learn_rate;
+        }
+        for (size_t j = 0; j < nn->layers[i]->length; j++) {
+            nn->layers[i]->bias[j] -= bias_gradients[i][j] / data_batch->length * learn_rate;
+        }
+
+        free(weights_gradients[i]);
+        free(bias_gradients[i]);
+    }
+
+    free(weights_gradients);
+    free(bias_gradients);
 }
 
 bool save_network(const char *filename, neural_network *nn) {

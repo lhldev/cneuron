@@ -68,6 +68,18 @@ TEST(DataTest, CopyData) {
     free_dataset(test_dataset);
 }
 
+TEST(DataTest, RandomSampleDataset) {
+    dataset *test_dataset = get_dataset("data/mnist/test/0.dat");
+
+    dataset *dataset_sample = get_random_dataset_sample(test_dataset, test_dataset->length - 1);
+    ASSERT_NE(dataset_sample, nullptr);
+    ASSERT_NE(dataset_sample->datas, nullptr);
+    ASSERT_NE(dataset_sample->datas[0]->inputs, nullptr);
+
+    free_dataset(dataset_sample);
+    free_dataset(test_dataset);
+}
+
 TEST(DataTest, RotateData) {
     data *test_data = (data *)malloc(sizeof(data));
 

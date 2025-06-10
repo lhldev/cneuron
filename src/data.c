@@ -129,6 +129,19 @@ data *get_data_copy(const data *source_data, size_t inputs_length) {
     return copy;
 }
 
+dataset *get_random_dataset_sample(const dataset *source_dataset, size_t amount) {
+    dataset *new_dataset = malloc(sizeof(dataset));
+    new_dataset->inputs_length = source_dataset->inputs_length;
+    new_dataset->length = amount;
+    new_dataset->datas = malloc(sizeof(data) * amount);
+
+    for (size_t i = 0; i < amount; i++) {
+        new_dataset->datas[i] = get_data_copy(source_dataset->datas[rand() % source_dataset->length], source_dataset->inputs_length);
+    }
+
+    return new_dataset;
+}
+
 void rotate_data(data *data, int width, int height, float angle) {
     assert(data);
     assert(data->inputs);

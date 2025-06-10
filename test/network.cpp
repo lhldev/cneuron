@@ -6,13 +6,7 @@ extern "C" {
 
 #include <math.h>
 
-float sigmoid(float val, bool is_deravative) {
-    float result = 1.0f / (1.0f + expf(-val));
-    if (is_deravative == 1) {
-        return result * (1.0f - result);
-    }
-    return result;
-}
+#include "test_utils.h"
 
 TEST(NetworkTest, RandomFloat) {
     float test = random_float(0.0f, 1.0f);
@@ -24,29 +18,6 @@ TEST(NetworkTest, RandomFloat) {
         }
     }
     ASSERT_FALSE(same);
-}
-
-TEST(NetworkTest, MatrixMultiply) {
-    float *a = (float *)malloc(sizeof(float) * 3);
-    float *b = (float *)malloc(sizeof(float) * 3);
-
-    a[0] = 1.0f;
-    a[1] = 2.0f;
-    a[2] = 3.0f;
-    b[0] = 4.0f;
-    b[1] = 5.0f;
-    b[2] = 6.0f;
-
-    float *c = (float *)malloc(sizeof(float) * 9);
-    matrix_multiply(a, b, c, 3, 1, 3);
-    ASSERT_FLOAT_EQ(c[0], 4.0f);
-    ASSERT_FLOAT_EQ(c[2], 12.0f);
-    ASSERT_FLOAT_EQ(c[4], 10.0f);
-    ASSERT_FLOAT_EQ(c[7], 12.0f);
-
-    free(a);
-    free(b);
-    free(c);
 }
 
 TEST(NetworkTest, GetLayer) {
@@ -151,35 +122,8 @@ TEST(NetworkTest, Softmax) {
 }
 
 // Output layer only
-TEST(NetworkTest, LearnSingleLayer) {
-    // Create data
-    dataset *test_dataset = (dataset *)malloc(sizeof(dataset));
-    test_dataset->length = 4;
-    data **datas = (data **)malloc(sizeof(data *) * test_dataset->length);
-    test_dataset->datas = datas;
-    test_dataset->inputs_length = 2;
-
-    for (size_t i = 0; i < test_dataset->length; i++) {
-        test_dataset->datas[i] = (data *)malloc(sizeof(data));
-        test_dataset->datas[i]->inputs = (float *)malloc(sizeof(float) * test_dataset->inputs_length);
-    }
-
-    // OR gate
-    test_dataset->datas[1]->inputs[0] = 0.0f;
-    test_dataset->datas[1]->inputs[1] = 0.0f;
-    test_dataset->datas[1]->expected_index = 0;
-
-    test_dataset->datas[0]->inputs[0] = 1.0f;
-    test_dataset->datas[0]->inputs[1] = 1.0f;
-    test_dataset->datas[0]->expected_index = 1;
-
-    test_dataset->datas[2]->inputs[0] = 0.0f;
-    test_dataset->datas[2]->inputs[1] = 1.0f;
-    test_dataset->datas[2]->expected_index = 1;
-
-    test_dataset->datas[3]->inputs[0] = 1.0f;
-    test_dataset->datas[3]->inputs[1] = 0.0f;
-    test_dataset->datas[3]->expected_index = 1;
+TEST(NetworkTest, StochasticGDSingleLayer) {
+    dataset *test_dataset = get_or();
 
     // Create network
     size_t layer_length = 1;
@@ -189,7 +133,7 @@ TEST(NetworkTest, LearnSingleLayer) {
 
     for (size_t i = 0; i < 50000; i++) {
         for (size_t j = 0; j < test_dataset->length; j++) {
-            learn(nn, 0.03f, test_dataset->datas[rand() % test_dataset->length]);
+            stochastic_gd(nn, 0.03f, test_dataset->datas[rand() % test_dataset->length]);
         }
         if (i % 10000 == 0) {
             printf("Single layer learn cost: %f\n", cost(nn, test_dataset, test_dataset->length));
@@ -204,35 +148,8 @@ TEST(NetworkTest, LearnSingleLayer) {
     free(layer_lengths);
 }
 
-TEST(NetworkTest, LearnTests) {
-    // Create data
-    dataset *test_dataset = (dataset *)malloc(sizeof(dataset));
-    test_dataset->length = 4;
-    data **datas = (data **)malloc(sizeof(data *) * test_dataset->length);
-    test_dataset->datas = datas;
-    test_dataset->inputs_length = 2;
-
-    for (size_t i = 0; i < test_dataset->length; i++) {
-        test_dataset->datas[i] = (data *)malloc(sizeof(data));
-        test_dataset->datas[i]->inputs = (float *)malloc(sizeof(float) * test_dataset->inputs_length);
-    }
-
-    // XOR gate
-    test_dataset->datas[0]->inputs[0] = 1.0f;
-    test_dataset->datas[0]->inputs[1] = 1.0f;
-    test_dataset->datas[0]->expected_index = 0;
-
-    test_dataset->datas[1]->inputs[0] = 0.0f;
-    test_dataset->datas[1]->inputs[1] = 0.0f;
-    test_dataset->datas[1]->expected_index = 0;
-
-    test_dataset->datas[2]->inputs[0] = 0.0f;
-    test_dataset->datas[2]->inputs[1] = 1.0f;
-    test_dataset->datas[2]->expected_index = 1;
-
-    test_dataset->datas[3]->inputs[0] = 1.0f;
-    test_dataset->datas[3]->inputs[1] = 0.0f;
-    test_dataset->datas[3]->expected_index = 1;
+TEST(NetworkTest, StochasticGDTests) {
+    dataset *test_dataset = get_xor();
 
     // Multi layer test
     size_t layer_length = 2;
@@ -243,10 +160,10 @@ TEST(NetworkTest, LearnTests) {
 
     for (size_t i = 0; i < 500000; i++) {
         for (size_t j = 0; j < test_dataset->length; j++) {
-            learn(nn, 0.001f, test_dataset->datas[rand() % test_dataset->length]);
+            stochastic_gd(nn, 0.001f, test_dataset->datas[rand() % test_dataset->length]);
         }
         if (i % 100000 == 0) {
-            printf("Multi layer learn cost: %f\n", cost(nn, test_dataset, test_dataset->length));
+            printf("Stochastic Multi layer learn cost: %f\n", cost(nn, test_dataset, test_dataset->length));
         }
     }
 
@@ -264,10 +181,58 @@ TEST(NetworkTest, LearnTests) {
 
     for (size_t i = 0; i < 50000; i++) {
         for (size_t j = 0; j < test_dataset->length; j++) {
-            learn(nn, 0.03f, test_dataset->datas[rand() % test_dataset->length]);
+            stochastic_gd(nn, 0.03f, test_dataset->datas[rand() % test_dataset->length]);
         }
         if (i % 10000 == 0) {
-            printf("Non-linearly separable learn cost: %f\n", cost(nn, test_dataset, test_dataset->length));
+            printf("Stochastic Non-linearly separable learn cost: %f\n", cost(nn, test_dataset, test_dataset->length));
+        }
+    }
+
+    ASSERT_GE(cost(nn, test_dataset, test_dataset->length), 0.05);
+    ASSERT_LE(test_network_percent(nn, test_dataset), 90.0f);
+
+    free_neural_network(nn);
+    free(layer_lengths);
+    free_dataset(test_dataset);
+}
+
+TEST(NetworkTest, MiniBatchGDTests) {
+    dataset *test_dataset = get_xor();
+
+    // Multi layer test
+    size_t layer_length = 2;
+    size_t *layer_lengths = (size_t *)malloc(sizeof(size_t) * layer_length);
+    layer_lengths[0] = 4;
+    layer_lengths[1] = 2;
+    neural_network *nn = get_neural_network(layer_length, layer_lengths, test_dataset->inputs_length, &sigmoid);
+
+    for (size_t i = 0; i < 1000000; i++) {
+        dataset *batch_dataset = get_random_dataset_sample(test_dataset, (rand() % test_dataset->length) + 1);
+        mini_batch_gd(nn, 0.001f, batch_dataset);
+        free_dataset(batch_dataset);
+        if (i % 200000 == 0) {
+            printf("Mini Batch Multi layer learn cost: %f\n", cost(nn, test_dataset, test_dataset->length));
+        }
+    }
+
+    ASSERT_LE(cost(nn, test_dataset, test_dataset->length), 0.05);
+    ASSERT_GE(test_network_percent(nn, test_dataset), 90.0f);
+
+    free_neural_network(nn);
+    free(layer_lengths);
+
+    // Non-linearly separable test
+    layer_length = 1;
+    layer_lengths = (size_t *)malloc(sizeof(size_t) * layer_length);
+    layer_lengths[0] = 2;
+    nn = get_neural_network(layer_length, layer_lengths, test_dataset->inputs_length, &sigmoid);
+
+    for (size_t i = 0; i < 100000; i++) {
+        dataset *batch_dataset = get_random_dataset_sample(test_dataset, (rand() % test_dataset->length) + 1);
+        mini_batch_gd(nn, 0.001f, batch_dataset);
+        free_dataset(batch_dataset);
+        if (i % 20000 == 0) {
+            printf("Mini Batch Non-linearly separable learn cost: %f\n", cost(nn, test_dataset, test_dataset->length));
         }
     }
 

@@ -50,6 +50,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE m libcneuron)
 # Test executable
 add_executable(tests ${TEST_FILES})
 apply_target_flags(tests)
+target_include_directories(tests PRIVATE ${CMAKE_SOURCE_DIR}/test)
 target_link_libraries(tests PRIVATE m libcneuron GTest::gtest_main)
 
 add_test(NAME tests COMMAND tests)
