@@ -1,12 +1,12 @@
 #include <gtest/gtest.h>
 
+#include "test_utils.h"
+
 extern "C" {
 #include "cneuron/cneuron.h"
 }
 
 #include <math.h>
-
-#include "test_utils.h"
 
 TEST(LinearAlgebraTest, MatrixMultiply) {
     size_t rows_a = 3;
@@ -24,9 +24,9 @@ TEST(LinearAlgebraTest, MatrixMultiply) {
     b[2] = 6.0f;
 
     float *c = (float *)malloc(sizeof(float) * rows_a * cols_b);
-    matrix_multiply(a, b, c, rows_a, cols_a, cols_b);
+    matrix_vector_multiply(a, b, c, rows_a, cols_a);
     ASSERT_FLOAT_EQ(c[0], 4.0f);
-    ASSERT_FLOAT_EQ(c[2], 12.0f);
+    ASSERT_FLOAT_EQ(c[2], 12.0f)
     ASSERT_FLOAT_EQ(c[4], 10.0f);
     ASSERT_FLOAT_EQ(c[7], 12.0f);
 

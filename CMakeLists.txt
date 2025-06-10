@@ -15,6 +15,8 @@ message(STATUS "Building in ${CMAKE_BUILD_TYPE} mode")
 
 enable_testing()
 
+set(BLA_VENDOR OpenBLAS)
+find_package(BLAS REQUIRED)
 find_package(GTest REQUIRED)
 
 file(GLOB_RECURSE SRC_FILES src/*.c EXCLUDE "src/main.c")
@@ -24,9 +26,10 @@ set(ASAN_FLAGS -fsanitize=address -fno-omit-frame-pointer -g)
 set(WARNING_FLAGS -Wall -Wextra -Wpedantic)
 set(RELEASE_FLAGS -O3 -DNDEBUG)
 
-function(apply_target_flags target)
+function(apply_target target)
     target_include_directories(${target} PRIVATE ${CMAKE_SOURCE_DIR}/include)
     target_compile_options(${target} PRIVATE ${WARNING_FLAGS})
+    target_link_libraries(libcneuron PRIVATE ${BLAS_LIBRARIES} m)
 
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         target_compile_options(${target} PRIVATE ${ASAN_FLAGS})
@@ -39,19 +42,18 @@ endfunction()
 
 # libcneuron library
 add_library(libcneuron ${SRC_FILES})
-apply_target_flags(libcneuron)
-target_link_libraries(libcneuron PRIVATE m)
+apply_target(libcneuron)
 
 # Main executable
 add_executable(${PROJECT_NAME} src/main.c)
-apply_target_flags(${PROJECT_NAME})
-target_link_libraries(${PROJECT_NAME} PRIVATE m libcneuron)
+apply_target(${PROJECT_NAME})
+target_link_libraries(${PROJECT_NAME} PRIVATE libcneuron)
 
 # Test executable
 add_executable(tests ${TEST_FILES})
-apply_target_flags(tests)
+apply_target(tests)
 target_include_directories(tests PRIVATE ${CMAKE_SOURCE_DIR}/test)
-target_link_libraries(tests PRIVATE m libcneuron GTest::gtest_main)
+target_link_libraries(tests PRIVATE libcneuron GTest::gtest_main)
 
 add_test(NAME tests COMMAND tests)
 

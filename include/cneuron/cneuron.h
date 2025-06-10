@@ -121,7 +121,7 @@ float output_expected(size_t index, const data *data);
  * @param cols_a Number of columns in matrix 'a' (also rows in matrix 'b').
  * @param cols_b Number of columns in matrix 'b'.
  */
-void matrix_multiply(const float *a, const float *b, float *c, size_t rows_a, size_t cols_a, size_t cols_b);
+void matrix_vector_multiply(const float *a, const float *b, float *c, size_t rows_a, size_t cols_a);
 
 /**
  * @brief Apply activation to a vector.
@@ -141,7 +141,7 @@ void vector_apply_activation(const float *a, float *b, size_t length, float (*ac
  * @param c Pointer to the resulting vector.
  * @param length Number of element in both vector.
  */
-void vector_add(const float *a, const float *b, float *c, size_t length);
+void vector_add(const float *a, float *c, size_t length);
 
 /**
  * @brief Represents a single layer in a neural network.

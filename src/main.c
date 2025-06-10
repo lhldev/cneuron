@@ -1,3 +1,4 @@
+#include <cblas.h>
 #include <errno.h>
 #include <math.h>
 #include <stdbool.h>
@@ -10,18 +11,30 @@
 
 const size_t IMAGE_SIZE = 28;
 
+void test_openblas() {
+    int i = 0;
+    double A[6] = {1.0, 2.0, 1.0, -3.0, 4.0, -1.0};
+    double B[6] = {1.0, 2.0, 1.0, -3.0, 4.0, -1.0};
+    double C[9] = {.5, .5, .5, .5, .5, .5, .5, .5, .5};
+    cblas_dgemm(CblasColMajor, CblasNoTrans, CblasTrans, 3, 3, 2, 1, A, 3, B, 3, 2, C, 3);
+
+    for (i = 0; i < 9; i++)
+        printf("%lf ", C[i]);
+    printf("\n");
+}
+
 float sigmoid(float val, bool is_deravative) {
     float result = 1.0f / (1.0f + expf(-val));
-    if (is_deravative) {
+    if (is_deravative)
         return result * (1.0f - result);
-    }
+
     return result;
 }
 
 float relu(float val, bool is_deravative) {
-    if (is_deravative) {
+    if (is_deravative)
         return (val > 0.0f) ? 1.0f : 0.0f;
-    }
+
     return fmax(0.0f, val);
 }
 
@@ -88,9 +101,8 @@ dataset *get_mnist(bool is_test) {
         free(datasets[i]);
     }
 
-    if (curr_count != mnist_dataset->length) {
+    if (curr_count != mnist_dataset->length)
         printf("Error reading all mnist data. Read: %zu, Expected: %zu\n", curr_count, mnist_dataset->length);
-    }
 
     free(datasets);
 
@@ -98,6 +110,8 @@ dataset *get_mnist(bool is_test) {
 }
 
 int main() {
+    test_openblas();
+
     srand(time(NULL));
     dataset *train_dataset = get_mnist(false);
     dataset *test_dataset = get_mnist(true);

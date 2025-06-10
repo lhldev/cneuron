@@ -17,9 +17,8 @@ float random_float(float min, float max) {
 
 layer *get_layer(size_t length, size_t prev_length) {
     layer *new_layer = calloc(1, sizeof(layer));
-    if (!new_layer) {
+    if (!new_layer)
         return NULL;
-    }
 
     new_layer->length = length;
 
@@ -29,9 +28,8 @@ layer *get_layer(size_t length, size_t prev_length) {
         return NULL;
     }
 
-    for (size_t i = 0; i < length * prev_length; i++) {
+    for (size_t i = 0; i < length * prev_length; i++)
         new_layer->weights[i] = ((float)rand() / (float)RAND_MAX * 2.0f - 1.0f);
-    }
 
     new_layer->delta = calloc(length, sizeof(float));
     if (!new_layer->delta) {
@@ -64,9 +62,8 @@ neural_network *get_neural_network(size_t layer_length, const size_t *layer_leng
     assert(layer_lengths);
 
     neural_network *nn = malloc(sizeof(neural_network));
-    if (!nn) {
+    if (!nn)
         return NULL;
-    }
 
     // Use calloc for freeing when error
     nn->layers = calloc(layer_length, sizeof(layer));
@@ -96,9 +93,8 @@ neural_network *get_neural_network(size_t layer_length, const size_t *layer_leng
 }
 
 void free_layer(layer *layer) {
-    if (!layer) {
+    if (!layer)
         return;
-    }
 
     free(layer->weighted_input);
     free(layer->output);
@@ -109,30 +105,28 @@ void free_layer(layer *layer) {
 }
 
 void free_neural_network(neural_network *nn) {
-    if (!nn) {
+    if (!nn)
         return;
-    }
 
-    for (size_t i = 0; i < nn->length; i++) {
+    for (size_t i = 0; i < nn->length; i++)
         free_layer(nn->layers[i]);
-    }
+
     free(nn->layers);
     free(nn);
 }
 
 void compute_network(neural_network *nn, const float *inputs) {
-    assert(nn);
-    assert(inputs);
+    assert(nn && inputs);
 
     layer *curr = nn->layers[0];
     while (curr != NULL) {
         if (curr->prev_layer == NULL) {
-            matrix_multiply(curr->weights, inputs, curr->weighted_input, curr->length, nn->inputs_length, 1);
+            matrix_vector_multiply(curr->weights, inputs, curr->weighted_input, curr->length, nn->inputs_length);
         } else {
-            matrix_multiply(curr->weights, curr->prev_layer->output, curr->weighted_input, curr->length, curr->prev_layer->length, 1);
+            matrix_vector_multiply(curr->weights, curr->prev_layer->output, curr->weighted_input, curr->length, curr->prev_layer->length);
         }
 
-        vector_add(curr->bias, curr->weighted_input, curr->weighted_input, curr->length);
+        vector_add(curr->bias, curr->weighted_input, curr->length);
         vector_apply_activation(curr->weighted_input, curr->output, curr->length, nn->activation_function);
         curr = curr->next_layer;
     }
@@ -146,14 +140,12 @@ float softmax(neural_network *nn, size_t neuron_index) {
 
     layer *output_layer = nn->layers[nn->length - 1];
     for (size_t i = 0; i < output_layer->length; i++) {
-        if (output_layer->output[i] > max_output) {
+        if (output_layer->output[i] > max_output)
             max_output = output_layer->output[i];
-        }
     }
 
-    for (size_t i = 0; i < output_layer->length; i++) {
+    for (size_t i = 0; i < output_layer->length; i++)
         sum += expf(output_layer->output[i] - max_output);
-    }
 
     return expf(output_layer->output[neuron_index] - max_output) / sum;
 }
@@ -163,9 +155,8 @@ void print_activation_percentages(neural_network *nn) {
 
     layer *output_layer = nn->layers[nn->length - 1];
     float *percentages = malloc(sizeof(float) * output_layer->length);
-    if (!percentages) {
+    if (!percentages)
         return;
-    }
 
     size_t *indices = malloc(sizeof(size_t) * output_layer->length);
     if (!indices) {
@@ -183,9 +174,8 @@ void print_activation_percentages(neural_network *nn) {
     for (size_t i = 0; i < output_layer->length - 1; i++) {
         int max_idx = i;
         for (size_t j = i + 1; j < output_layer->length; j++) {
-            if (percentages[j] > percentages[max_idx]) {
+            if (percentages[j] > percentages[max_idx])
                 max_idx = j;
-            }
         }
         // Swap percentages
         float temp = percentages[max_idx];
@@ -198,9 +188,8 @@ void print_activation_percentages(neural_network *nn) {
     }
 
     // Print the sorted percentages with neuron indices
-    for (size_t i = 0; i < output_layer->length; i++) {
+    for (size_t i = 0; i < output_layer->length; i++)
         printf(" (%zu = %.2f%%) ", indices[i], percentages[i]);
-    }
 
     printf("\n");
 
@@ -209,8 +198,7 @@ void print_activation_percentages(neural_network *nn) {
 }
 
 float cost(neural_network *nn, const dataset *test_dataset, size_t num_test) {
-    assert(nn);
-    assert(test_dataset);
+    assert(nn && test_dataset);
 
     float cost = 0.0f;
 
@@ -230,15 +218,12 @@ void print_result(neural_network *nn) {
     assert(nn);
 
     layer *output_layer = nn->layers[nn->length - 1];
-    for (size_t i = 0; i < output_layer->length; i++) {
+    for (size_t i = 0; i < output_layer->length; i++)
         printf("%f ", output_layer->output[i]);
-    }
 }
 
 void layer_learn(neural_network *nn, size_t layer_index, float learn_rate, const data *data, float (*activation_function)(float, bool)) {
-    assert(nn);
-    assert(data);
-    assert(activation_function);
+    assert(nn && data && activation_function);
 
     if (layer_index == nn->length - 1) {
         // Output layer learn
@@ -251,14 +236,12 @@ void layer_learn(neural_network *nn, size_t layer_index, float learn_rate, const
 
             // If output_layer is the only layer use data as prev_layer
             if (nn->length == 1) {
-                for (size_t j = 0; j < nn->inputs_length; j++) {
+                for (size_t j = 0; j < nn->inputs_length; j++)
                     output_layer->weights[j * output_layer->length + i] -= output_layer->delta[i] * data->inputs[j] * learn_rate;
-                }
             } else {
                 layer *prev_layer = output_layer->prev_layer;
-                for (size_t j = 0; j < prev_layer->length; j++) {
+                for (size_t j = 0; j < prev_layer->length; j++)
                     output_layer->weights[j * output_layer->length + i] -= output_layer->delta[i] * prev_layer->output[j] * learn_rate;
-                }
             }
 
             output_layer->bias[i] -= output_layer->delta[i] * learn_rate;
@@ -294,9 +277,7 @@ void layer_learn(neural_network *nn, size_t layer_index, float learn_rate, const
 }
 
 void layer_learn_collect_gradient(neural_network *nn, float *layer_weights_gradients, float *layer_bias_gradients, size_t layer_index, const data *data, float (*activation_function)(float, bool)) {
-    assert(nn);
-    assert(data);
-    assert(activation_function);
+    assert(nn && data && activation_function);
 
     if (layer_index == nn->length - 1) {
         // Output layer learn
@@ -309,14 +290,12 @@ void layer_learn_collect_gradient(neural_network *nn, float *layer_weights_gradi
 
             // If output_layer is the only layer use data as prev_layer
             if (nn->length == 1) {
-                for (size_t j = 0; j < nn->inputs_length; j++) {
+                for (size_t j = 0; j < nn->inputs_length; j++)
                     layer_weights_gradients[j * output_layer->length + i] += output_layer->delta[i] * data->inputs[j];
-                }
             } else {
                 layer *prev_layer = output_layer->prev_layer;
-                for (size_t j = 0; j < prev_layer->length; j++) {
+                for (size_t j = 0; j < prev_layer->length; j++)
                     layer_weights_gradients[j * output_layer->length + i] += output_layer->delta[i] * prev_layer->output[j];
-                }
             }
 
             layer_bias_gradients[i] += output_layer->delta[i];
@@ -352,18 +331,15 @@ void layer_learn_collect_gradient(neural_network *nn, float *layer_weights_gradi
 }
 
 void stochastic_gd(neural_network *nn, float learn_rate, const data *data) {
-    assert(nn);
-    assert(data);
+    assert(nn && data);
 
     compute_network(nn, data->inputs);
-    for (size_t i = 0; i < nn->length; i++) {
+    for (size_t i = 0; i < nn->length; i++)
         layer_learn(nn, nn->length - i - 1, learn_rate, data, nn->activation_function);
-    }
 }
 
 void mini_batch_gd(neural_network *nn, float learn_rate, const dataset *data_batch) {
-    assert(nn);
-    assert(data_batch);
+    assert(nn && data_batch);
 
     float **weights_gradients = malloc(sizeof(float *) * nn->length);
     float **bias_gradients = malloc(sizeof(float *) * nn->length);
@@ -383,12 +359,10 @@ void mini_batch_gd(neural_network *nn, float learn_rate, const dataset *data_bat
     }
 
     for (size_t i = 0; i < nn->length; i++) {
-        for (size_t j = 0; j < nn->layers[i]->length * ((i == 0) ? nn->inputs_length : nn->layers[i - 1]->length); j++) {
+        for (size_t j = 0; j < nn->layers[i]->length * ((i == 0) ? nn->inputs_length : nn->layers[i - 1]->length); j++)
             nn->layers[i]->weights[j] -= weights_gradients[i][j] / data_batch->length * learn_rate;
-        }
-        for (size_t j = 0; j < nn->layers[i]->length; j++) {
+        for (size_t j = 0; j < nn->layers[i]->length; j++)
             nn->layers[i]->bias[j] -= bias_gradients[i][j] / data_batch->length * learn_rate;
-        }
 
         free(weights_gradients[i]);
         free(bias_gradients[i]);
@@ -399,8 +373,7 @@ void mini_batch_gd(neural_network *nn, float learn_rate, const dataset *data_bat
 }
 
 bool save_network(const char *filename, neural_network *nn) {
-    assert(filename);
-    assert(nn);
+    assert(filename && nn);
 
     FILE *file = fopen(filename, "wb");
     if (!file) {
@@ -430,8 +403,7 @@ bool save_network(const char *filename, neural_network *nn) {
 }
 
 bool load_network(const char *filename, neural_network *nn) {
-    assert(filename);
-    assert(nn);
+    assert(filename && nn);
 
     FILE *file = fopen(filename, "rb");
     if (!file) {
@@ -494,9 +466,8 @@ float test_network_percent(neural_network *nn, const dataset *test_dataset) {
         compute_network(nn, test_dataset->datas[i]->inputs);
         size_t max = 0;
         for (size_t j = 0; j < nn->layers[nn->length - 1]->length; j++) {
-            if (softmax(nn, j) > softmax(nn, max)) {
+            if (softmax(nn, j) > softmax(nn, max))
                 max = j;
-            }
         }
         if (max == test_dataset->datas[i]->expected_index) {
             correct++;
