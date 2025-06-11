@@ -15,7 +15,10 @@ message(STATUS "Building in ${CMAKE_BUILD_TYPE} mode")
 
 enable_testing()
 
-set(BLA_VENDOR OpenBLAS)
+if(NOT DEFINED BLA_VENDOR)
+    set(BLA_VENDOR OpenBLAS)
+endif()
+message(STATUS "Using BLAS vendor: ${BLA_VENDOR}")
 find_package(BLAS REQUIRED)
 find_package(GTest REQUIRED)
 
@@ -64,6 +67,8 @@ file(COPY ${CMAKE_SOURCE_DIR}/data ${CMAKE_SOURCE_DIR}/input.py DESTINATION ${CM
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/output)
 
 add_custom_target(run
+    COMMAND ${CMAKE_COMMAND} -E echo "Using BLAS vendor: ${BLA_VENDOR}"
+    COMMAND ${CMAKE_COMMAND} -E echo "Building in: ${CMAKE_BUILD_TYPE} mode"
     COMMAND ${CMAKE_BINARY_DIR}/${PROJECT_NAME}
     DEPENDS ${PROJECT_NAME} tests
 )
