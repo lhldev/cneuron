@@ -13,3 +13,5 @@ CMakeUserPresets.json
 build/
 .cache/
 tmp/
+perf.data.old
+perf.data

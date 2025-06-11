@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <cblas.h>
 #include <errno.h>
 #include <math.h>
 #include <stdbool.h>
@@ -120,14 +121,15 @@ void compute_network(neural_network *nn, const float *inputs) {
 
     layer *curr = nn->layers[0];
     while (curr != NULL) {
-        if (curr->prev_layer == NULL) {
-            matrix_vector_multiply(curr->weights, inputs, curr->weighted_input, curr->length, nn->inputs_length);
+        layer *prev = curr->prev_layer;
+        if (prev == NULL) {
+            cblas_sgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, curr->length, 1, nn->inputs_length, 1.0f, curr->weights, curr->length, inputs, nn->inputs_length, 0.0f, curr->weighted_input, curr->length);
         } else {
-            matrix_vector_multiply(curr->weights, curr->prev_layer->output, curr->weighted_input, curr->length, curr->prev_layer->length);
+            cblas_sgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, curr->length, 1, prev->length, 1.0f, curr->weights, curr->length, prev->output, prev->length, 0.0f, curr->weighted_input, curr->length);
         }
 
-        vector_add(curr->bias, curr->weighted_input, curr->length);
-        vector_apply_activation(curr->weighted_input, curr->output, curr->length, nn->activation_function);
+        cblas_saxpy(curr->length, 1.0f, curr->bias, 1, curr->weighted_input, 1);
+        vector_apply_activation(curr->weighted_input, curr->output, curr->length, nn->activation_function, false);
         curr = curr->next_layer;
     }
 }
@@ -222,120 +224,78 @@ void print_result(neural_network *nn) {
         printf("%f ", output_layer->output[i]);
 }
 
-void layer_learn(neural_network *nn, size_t layer_index, float learn_rate, const data *data, float (*activation_function)(float, bool)) {
-    assert(nn && data && activation_function);
+void layer_learn(neural_network *nn, size_t layer_index, float learn_rate, const data *data) {
+    assert(nn && data);
 
+    layer *curr_layer = nn->layers[layer_index];
+    layer *prev_layer = curr_layer->prev_layer;
+    layer *next_layer = curr_layer->next_layer;
+
+    // f'(Z_i) in weighted_input
+    vector_apply_activation(curr_layer->weighted_input, curr_layer->weighted_input, curr_layer->length, nn->activation_function, true);
     if (layer_index == nn->length - 1) {
-        // Output layer learn
-        layer *output_layer = nn->layers[layer_index];
-        for (size_t i = 0; i < output_layer->length; i++) {
-            float neuron_output = output_layer->output[i];
-            float target_output = output_expected(i, data);
-
-            output_layer->delta[i] = 2.0f * (neuron_output - target_output) * activation_function(output_layer->weighted_input[i], true);
-
-            // If output_layer is the only layer use data as prev_layer
-            if (nn->length == 1) {
-                for (size_t j = 0; j < nn->inputs_length; j++)
-                    output_layer->weights[j * output_layer->length + i] -= output_layer->delta[i] * data->inputs[j] * learn_rate;
-            } else {
-                layer *prev_layer = output_layer->prev_layer;
-                for (size_t j = 0; j < prev_layer->length; j++)
-                    output_layer->weights[j * output_layer->length + i] -= output_layer->delta[i] * prev_layer->output[j] * learn_rate;
-            }
-
-            output_layer->bias[i] -= output_layer->delta[i] * learn_rate;
-        }
+        // Error in output
+        curr_layer->output[data->expected_index] -= 1.0f;
     } else {
-        // Intermediate layer learn
-        layer *curr_layer = nn->layers[layer_index];
-        layer *prev_layer = curr_layer->prev_layer;
-        layer *next_layer = curr_layer->next_layer;
-        for (size_t i = 0; i < curr_layer->length; i++) {
-            curr_layer->delta[i] = 0.0f;
-            for (size_t j = 0; j < next_layer->length; j++) {
-                float weight_next_neuron = next_layer->weights[i * next_layer->length + j];
-                float delta_next_neuron = next_layer->delta[j];
-                curr_layer->delta[i] += weight_next_neuron * delta_next_neuron * activation_function(curr_layer->weighted_input[i], true);
-            }
-
-            if (prev_layer != NULL) {
-                for (size_t j = 0; j < prev_layer->length; j++) {
-                    float input = prev_layer->output[j];
-                    curr_layer->weights[j * curr_layer->length + i] -= curr_layer->delta[i] * input * learn_rate;
-                }
-            } else {
-                for (size_t j = 0; j < nn->inputs_length; j++) {
-                    float input = data->inputs[j];
-                    curr_layer->weights[j * curr_layer->length + i] -= curr_layer->delta[i] * input * learn_rate;
-                }
-            }
-
-            curr_layer->bias[i] -= curr_layer->delta[i] * learn_rate;
-        }
+        // W^T_{i+1}δ_{i+1} in output
+        cblas_sgemm(CblasColMajor, CblasTrans, CblasNoTrans, curr_layer->length, 1, next_layer->length, 1.0f, next_layer->weights, next_layer->length, next_layer->delta, next_layer->length, 0.0f, curr_layer->output, curr_layer->length);
     }
+
+    hadamard_product(curr_layer->weighted_input, curr_layer->output, curr_layer->delta, curr_layer->length);
+
+    float *weight_gradient;
+    if (layer_index == 0) {
+        weight_gradient = calloc(curr_layer->length * nn->inputs_length, sizeof(float));
+        cblas_sger(CblasColMajor, curr_layer->length, nn->inputs_length, 1.0f, curr_layer->delta, 1, data->inputs, 1, weight_gradient, curr_layer->length);
+        cblas_saxpy(curr_layer->length * nn->inputs_length, -learn_rate, weight_gradient, 1, curr_layer->weights, 1);
+    } else {
+        weight_gradient = calloc(curr_layer->length * prev_layer->length, sizeof(float));
+        cblas_sger(CblasColMajor, curr_layer->length, prev_layer->length, 1.0f, curr_layer->delta, 1, prev_layer->output, 1, weight_gradient, curr_layer->length);
+        cblas_saxpy(curr_layer->length * prev_layer->length, -learn_rate, weight_gradient, 1, curr_layer->weights, 1);
+    }
+
+    // Bias update
+    cblas_saxpy(curr_layer->length, -learn_rate, curr_layer->delta, 1, curr_layer->bias, 1);
+
+    free(weight_gradient);
 }
 
-void layer_learn_collect_gradient(neural_network *nn, float *layer_weights_gradients, float *layer_bias_gradients, size_t layer_index, const data *data, float (*activation_function)(float, bool)) {
-    assert(nn && data && activation_function);
+void layer_learn_collect_gradient(neural_network *nn, float *layer_weights_gradients, float *layer_bias_gradients, size_t layer_index, const data *data) {
+    assert(nn && layer_weights_gradients && layer_bias_gradients && data);
 
+    layer *curr_layer = nn->layers[layer_index];
+    layer *prev_layer = curr_layer->prev_layer;
+    layer *next_layer = curr_layer->next_layer;
+
+    // f'(Z_i) in weighted_input
+    vector_apply_activation(curr_layer->weighted_input, curr_layer->weighted_input, curr_layer->length, nn->activation_function, true);
     if (layer_index == nn->length - 1) {
-        // Output layer learn
-        layer *output_layer = nn->layers[layer_index];
-        for (size_t i = 0; i < output_layer->length; i++) {
-            float neuron_output = output_layer->output[i];
-            float target_output = output_expected(i, data);
-
-            output_layer->delta[i] = 2.0f * (neuron_output - target_output) * activation_function(output_layer->weighted_input[i], true);
-
-            // If output_layer is the only layer use data as prev_layer
-            if (nn->length == 1) {
-                for (size_t j = 0; j < nn->inputs_length; j++)
-                    layer_weights_gradients[j * output_layer->length + i] += output_layer->delta[i] * data->inputs[j];
-            } else {
-                layer *prev_layer = output_layer->prev_layer;
-                for (size_t j = 0; j < prev_layer->length; j++)
-                    layer_weights_gradients[j * output_layer->length + i] += output_layer->delta[i] * prev_layer->output[j];
-            }
-
-            layer_bias_gradients[i] += output_layer->delta[i];
-        }
+        // Error in output
+        curr_layer->output[data->expected_index] -= 1.0f;
     } else {
-        // Intermediate layer learn
-        layer *curr_layer = nn->layers[layer_index];
-        layer *prev_layer = curr_layer->prev_layer;
-        layer *next_layer = curr_layer->next_layer;
-        for (size_t i = 0; i < curr_layer->length; i++) {
-            curr_layer->delta[i] = 0.0f;
-            for (size_t j = 0; j < next_layer->length; j++) {
-                float weight_next_neuron = next_layer->weights[i * next_layer->length + j];
-                float delta_next_neuron = next_layer->delta[j];
-                curr_layer->delta[i] += weight_next_neuron * delta_next_neuron * activation_function(curr_layer->weighted_input[i], true);
-            }
-
-            if (prev_layer != NULL) {
-                for (size_t j = 0; j < prev_layer->length; j++) {
-                    float input = prev_layer->output[j];
-                    layer_weights_gradients[j * curr_layer->length + i] += curr_layer->delta[i] * input;
-                }
-            } else {
-                for (size_t j = 0; j < nn->inputs_length; j++) {
-                    float input = data->inputs[j];
-                    layer_weights_gradients[j * curr_layer->length + i] += curr_layer->delta[i] * input;
-                }
-            }
-
-            layer_bias_gradients[i] += curr_layer->delta[i];
-        }
+        // W^T_{i+1}δ_{i+1} in output
+        cblas_sgemm(CblasColMajor, CblasTrans, CblasNoTrans, curr_layer->length, 1, next_layer->length, 1.0f, next_layer->weights, next_layer->length, next_layer->delta, next_layer->length, 0.0f, curr_layer->output, curr_layer->length);
     }
+
+    hadamard_product(curr_layer->weighted_input, curr_layer->output, curr_layer->delta, curr_layer->length);
+
+    if (layer_index == 0) {
+        cblas_sger(CblasColMajor, curr_layer->length, nn->inputs_length, 1.0f, curr_layer->delta, 1, data->inputs, 1, layer_weights_gradients, curr_layer->length);
+    } else {
+        cblas_sger(CblasColMajor, curr_layer->length, prev_layer->length, 1.0f, curr_layer->delta, 1, prev_layer->output, 1, layer_weights_gradients, curr_layer->length);
+    }
+
+    // Bias update
+    cblas_saxpy(curr_layer->length, 1.0f, curr_layer->delta, 1, layer_bias_gradients, 1);
 }
 
 void stochastic_gd(neural_network *nn, float learn_rate, const data *data) {
     assert(nn && data);
 
     compute_network(nn, data->inputs);
-    for (size_t i = 0; i < nn->length; i++)
-        layer_learn(nn, nn->length - i - 1, learn_rate, data, nn->activation_function);
+    for (size_t i = 0; i < nn->length; i++) {
+        layer_learn(nn, nn->length - i - 1, learn_rate, data);
+    }
 }
 
 void mini_batch_gd(neural_network *nn, float learn_rate, const dataset *data_batch) {
@@ -354,7 +314,7 @@ void mini_batch_gd(neural_network *nn, float learn_rate, const dataset *data_bat
         compute_network(nn, data->inputs);
         for (size_t j = 0; j < nn->length; j++) {
             size_t layer_index = nn->length - j - 1;
-            layer_learn_collect_gradient(nn, weights_gradients[layer_index], bias_gradients[layer_index], layer_index, data, nn->activation_function);
+            layer_learn_collect_gradient(nn, weights_gradients[layer_index], bias_gradients[layer_index], layer_index, data);
         }
     }
 

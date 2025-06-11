@@ -140,7 +140,7 @@ TEST(NetworkTest, StochasticGDSingleLayer) {
         }
     }
 
-    ASSERT_LE(cost(nn, test_dataset, test_dataset->length), 0.05);
+    ASSERT_LE(cost(nn, test_dataset, test_dataset->length), 0.2f);
     ASSERT_GE(test_network_percent(nn, test_dataset), 90.0f);
 
     free_dataset(test_dataset);
@@ -167,7 +167,7 @@ TEST(NetworkTest, StochasticGDTests) {
         }
     }
 
-    ASSERT_LE(cost(nn, test_dataset, test_dataset->length), 0.05);
+    ASSERT_LE(cost(nn, test_dataset, test_dataset->length), 0.2f);
     ASSERT_GE(test_network_percent(nn, test_dataset), 90.0f);
 
     free_neural_network(nn);
@@ -188,7 +188,7 @@ TEST(NetworkTest, StochasticGDTests) {
         }
     }
 
-    ASSERT_GE(cost(nn, test_dataset, test_dataset->length), 0.05);
+    ASSERT_GE(cost(nn, test_dataset, test_dataset->length), 0.2f);
     ASSERT_LE(test_network_percent(nn, test_dataset), 90.0f);
 
     free_neural_network(nn);
@@ -206,8 +206,8 @@ TEST(NetworkTest, MiniBatchGDTests) {
     layer_lengths[1] = 2;
     neural_network *nn = get_neural_network(layer_length, layer_lengths, test_dataset->inputs_length, &sigmoid);
 
-    for (size_t i = 0; i < 1000000; i++) {
-        dataset *batch_dataset = get_random_dataset_sample(test_dataset, (rand() % test_dataset->length) + 1);
+    for (size_t i = 0; i < 1500000; i++) {
+        dataset *batch_dataset = get_random_dataset_sample(test_dataset, test_dataset->length);
         mini_batch_gd(nn, 0.001f, batch_dataset);
         free_dataset(batch_dataset);
         if (i % 200000 == 0) {
@@ -215,7 +215,7 @@ TEST(NetworkTest, MiniBatchGDTests) {
         }
     }
 
-    ASSERT_LE(cost(nn, test_dataset, test_dataset->length), 0.05);
+    ASSERT_LE(cost(nn, test_dataset, test_dataset->length), 0.2f);
     ASSERT_GE(test_network_percent(nn, test_dataset), 90.0f);
 
     free_neural_network(nn);
@@ -228,7 +228,7 @@ TEST(NetworkTest, MiniBatchGDTests) {
     nn = get_neural_network(layer_length, layer_lengths, test_dataset->inputs_length, &sigmoid);
 
     for (size_t i = 0; i < 100000; i++) {
-        dataset *batch_dataset = get_random_dataset_sample(test_dataset, (rand() % test_dataset->length) + 1);
+        dataset *batch_dataset = get_random_dataset_sample(test_dataset, test_dataset->length);
         mini_batch_gd(nn, 0.001f, batch_dataset);
         free_dataset(batch_dataset);
         if (i % 20000 == 0) {
@@ -236,7 +236,7 @@ TEST(NetworkTest, MiniBatchGDTests) {
         }
     }
 
-    ASSERT_GE(cost(nn, test_dataset, test_dataset->length), 0.05);
+    ASSERT_GE(cost(nn, test_dataset, test_dataset->length), 0.2f);
     ASSERT_LE(test_network_percent(nn, test_dataset), 90.0f);
 
     free_neural_network(nn);

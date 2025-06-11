@@ -1,4 +1,3 @@
-#include <cblas.h>
 #include <errno.h>
 #include <math.h>
 #include <stdbool.h>
@@ -10,18 +9,6 @@
 #include "cneuron/cneuron.h"
 
 const size_t IMAGE_SIZE = 28;
-
-void test_openblas() {
-    int i = 0;
-    double A[6] = {1.0, 2.0, 1.0, -3.0, 4.0, -1.0};
-    double B[6] = {1.0, 2.0, 1.0, -3.0, 4.0, -1.0};
-    double C[9] = {.5, .5, .5, .5, .5, .5, .5, .5, .5};
-    cblas_dgemm(CblasColMajor, CblasNoTrans, CblasTrans, 3, 3, 2, 1, A, 3, B, 3, 2, C, 3);
-
-    for (i = 0; i < 9; i++)
-        printf("%lf ", C[i]);
-    printf("\n");
-}
 
 float sigmoid(float val, bool is_deravative) {
     float result = 1.0f / (1.0f + expf(-val));
@@ -109,9 +96,7 @@ dataset *get_mnist(bool is_test) {
     return mnist_dataset;
 }
 
-int main() {
-    test_openblas();
-
+int main(int argc, char **argv) {
     srand(time(NULL));
     dataset *train_dataset = get_mnist(false);
     dataset *test_dataset = get_mnist(true);
@@ -126,19 +111,26 @@ int main() {
     // Parameters
     float learn_rate = 1.5f;
     size_t batch_size = 30;
-    int learn_amount = 150000;
+    int learn_amount = 4800000;
     int batch_amount = learn_amount / batch_size;
     int log_amount = 200;  // Log once reached a number of batch
 
     char cmd[100];
     FILE *fp;
     float user_input[IMAGE_SIZE * IMAGE_SIZE];
-    while (1) {
-        printf("cmd: ");
-        if (scanf("%99s", cmd) != 1) {
-            printf("Invalid input format. Please try again.\n");
-            continue;
+    bool loop = true;
+    while (loop) {
+        if (argc > 1) {
+            loop = false;
+            cmd[0] = argv[1][0];
+        } else {
+            printf("cmd: ");
+            if (scanf("%99s", cmd) != 1) {
+                printf("Invalid input format. Please try again.\n");
+                continue;
+            }
         }
+
         if (cmd[0] == 'q') {
             break;
         } else if (cmd[0] == 's') {
