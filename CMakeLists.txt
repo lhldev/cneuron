@@ -13,6 +13,8 @@ endif()
 
 message(STATUS "Building in ${CMAKE_BUILD_TYPE} mode")
 
+option(ENABLE_TESTING "Enable C++ and testing features" ON)
+
 enable_testing()
 
 if(NOT DEFINED BLA_VENDOR)
@@ -20,7 +22,11 @@ if(NOT DEFINED BLA_VENDOR)
 endif()
 message(STATUS "Using BLAS vendor: ${BLA_VENDOR}")
 find_package(BLAS REQUIRED)
-find_package(GTest REQUIRED)
+
+if(ENABLE_TESTING)
+    find_package(GTest REQUIRED)
+endif()
+
 
 file(GLOB_RECURSE SRC_FILES src/*.c EXCLUDE "src/main.c")
 file(GLOB_RECURSE TEST_FILES test/*.cpp)
@@ -62,12 +68,14 @@ apply_target(${PROJECT_NAME})
 target_link_libraries(${PROJECT_NAME} PRIVATE libcneuron)
 
 # Test executable
-add_executable(tests ${TEST_FILES})
-apply_target(tests)
-target_include_directories(tests PRIVATE ${CMAKE_SOURCE_DIR}/test)
-target_link_libraries(tests PRIVATE libcneuron GTest::gtest_main)
+if(ENABLE_TESTING)
+    add_executable(tests ${TEST_FILES})
+    apply_target(tests)
+    target_include_directories(tests PRIVATE ${CMAKE_SOURCE_DIR}/test)
+    target_link_libraries(tests PRIVATE libcneuron GTest::gtest_main)
+    add_test(NAME tests COMMAND tests)
+endif()
 
-add_test(NAME tests COMMAND tests)
 
 message(STATUS "Copying data and input.py to the build directory...")
 file(COPY ${CMAKE_SOURCE_DIR}/data ${CMAKE_SOURCE_DIR}/input.py DESTINATION ${CMAKE_BINARY_DIR})
@@ -78,4 +86,5 @@ add_custom_target(run
     COMMAND ${CMAKE_COMMAND} -E echo "Building in: ${CMAKE_BUILD_TYPE} mode"
     COMMAND ${CMAKE_BINARY_DIR}/${PROJECT_NAME}
     DEPENDS ${PROJECT_NAME} tests
+    $<$<BOOL:${ENABLE_TESTING}>:tests>
 )
