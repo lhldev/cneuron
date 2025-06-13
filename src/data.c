@@ -7,6 +7,7 @@
 #include <string.h>
 
 #include "cneuron/cneuron.h"
+#include "rand.h"
 
 #define BACKGROUND_VALUE 0.0f
 
@@ -136,7 +137,7 @@ dataset *get_random_dataset_sample(const dataset *source_dataset, size_t amount)
     new_dataset->datas = malloc(sizeof(data) * amount);
 
     for (size_t i = 0; i < amount; i++) {
-        new_dataset->datas[i] = get_data_copy(source_dataset->datas[rand() % source_dataset->length], source_dataset->inputs_length);
+        new_dataset->datas[i] = get_data_copy(source_dataset->datas[randnum_u32(source_dataset->length, 0)], source_dataset->inputs_length);
     }
 
     return new_dataset;
@@ -242,9 +243,9 @@ void noise_data(data *data, size_t inputs_length, float noise_factor, float prob
     assert(inputs_length > 0);
 
     for (size_t i = 0; i < inputs_length; i++) {
-        float random_value = rand() / (float)RAND_MAX;
+        float random_value = randf(1, 0);
         if (random_value <= probability) {
-            float noise = (rand() / (float)RAND_MAX * noise_factor);
+            float noise = randf(noise_factor, 0);
             float new_value = data->inputs[i] + noise;
 
             data->inputs[i] = fmin(new_value, 1.0f);

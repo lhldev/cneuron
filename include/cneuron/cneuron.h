@@ -158,15 +158,6 @@ typedef struct {
 } neural_network;
 
 /**
- * @brief Generates a random floating-point number within a given range.
- *
- * @param min Minimum value for the random number.
- * @param max Maximum value for the random number.
- * @return A random float between min and max.
- */
-float random_float(float min, float max);
-
-/**
  * @brief Allocates and initializes a new layer.
  *
  * @param length Number of neurons in this layer.
