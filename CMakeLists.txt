@@ -27,10 +27,15 @@ file(GLOB_RECURSE TEST_FILES test/*.cpp)
 
 set(ASAN_FLAGS -fsanitize=address -fno-omit-frame-pointer)
 set(WARNING_FLAGS -Wall -Wextra -Wpedantic)
-set(RELEASE_FLAGS -O3 -DNDEBUG)
+set(RELEASE_FLAGS -O3 -DNDEBUG -march=native)
 set(PROFILE_FLAG -O3 -p -g)
 
+option(USE_THREADING "Enable multithreading support for batch training" ON)
 function(apply_target target)
+    if(USE_THREADING)
+        target_compile_definitions(${target} PRIVATE USE_THREADING)
+    endif()
+
     target_include_directories(${target} PRIVATE ${CMAKE_SOURCE_DIR}/include)
     target_include_directories(${target} PRIVATE ${CMAKE_SOURCE_DIR}/external)
     target_include_directories(${target} PRIVATE ${CMAKE_SOURCE_DIR}/src)

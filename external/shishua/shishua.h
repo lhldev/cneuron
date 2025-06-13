@@ -217,7 +217,7 @@ static uint64_t phi[16] = {
     0xFEC507705E4AE6E5,
 };
 
-void prng_init(prng_state *s, uint64_t seed[4]) {
+static inline void prng_init(prng_state *s, uint64_t seed[4]) {
     memset(s, 0, sizeof(prng_state));
 #define STEPS 1
 #define ROUNDS 13

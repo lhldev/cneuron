@@ -142,7 +142,7 @@ static uint64_t phi[8] = {
     0xC1D64BA40F335E36,
 };
 
-void prng_init(prng_state *s, uint64_t seed[4]) {
+static inline void prng_init(prng_state *s, uint64_t seed[4]) {
     s->counter[0] = vdupq_n_u64(0);
     s->counter[1] = vdupq_n_u64(0);
 #define STEPS 5

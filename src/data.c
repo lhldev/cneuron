@@ -243,8 +243,7 @@ void noise_data(data *data, size_t inputs_length, float noise_factor, float prob
     assert(inputs_length > 0);
 
     for (size_t i = 0; i < inputs_length; i++) {
-        float random_value = randf(1, 0);
-        if (random_value <= probability) {
+        if (randf(1.0f, 0.0f) <= probability) {
             float noise = randf(noise_factor, 0);
             float new_value = data->inputs[i] + noise;
 

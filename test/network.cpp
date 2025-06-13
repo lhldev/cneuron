@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 
 extern "C" {
-#include "../src/rand.h"
 #include "cneuron/cneuron.h"
+#include "rand.h"
 }
 
 #include <math.h>
@@ -207,7 +207,7 @@ TEST(NetworkTest, MiniBatchGDTests) {
     layer_lengths[1] = 2;
     neural_network *nn = get_neural_network(layer_length, layer_lengths, test_dataset->inputs_length, &sigmoid);
 
-    for (size_t i = 0; i < 1500000; i++) {
+    for (size_t i = 0; i < 2000000; i++) {
         dataset *batch_dataset = get_random_dataset_sample(test_dataset, test_dataset->length);
         mini_batch_gd(nn, 0.001f, batch_dataset);
         free_dataset(batch_dataset);

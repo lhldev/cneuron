@@ -165,7 +165,7 @@ static uint64_t phi[8] = {
     0xC1D64BA40F335E36,
 };
 
-void prng_init(prng_state *s, uint64_t seed[4]) {
+static inline void prng_init(prng_state *s, uint64_t seed[4]) {
     s->counter[0] = _mm_setzero_si128();
     s->counter[1] = _mm_setzero_si128();
 #define STEPS 5

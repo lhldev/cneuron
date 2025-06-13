@@ -27,7 +27,7 @@ jobs:
         sudo apt-get install -y cmake libgtest-dev clang-format libopenblas-dev
 
     - name: Configure CMake
-      run: cmake -S . -B build
+      run: cmake -S . -B build -DUSE_THREADING=OFF
 
     - name: Build
       run: cmake --build build
