@@ -1,5 +1,10 @@
 # Neural-Network
 
+## Prerequisites
+Ensure that a BLAS (Basic Linear Algebra Subprograms) library is installed. This project relies on the C interface to BLAS (cblas.h), which is provided by most major BLAS distributions, including:
+- Intel MKL
+- OpenBLAS
+
 ## For optimal performance, compile the project using the following cmake command:
 ```
 cmake -S . -B build -DBLA_VENDOR=Intel10_64lp_seq -DCMAKE_BUILD_TYPE=Release -DUSE_THREADING=ON 
