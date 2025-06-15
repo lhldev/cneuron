@@ -87,6 +87,5 @@ add_custom_target(run
     COMMAND ${CMAKE_COMMAND} -E echo "Using BLAS vendor: ${BLA_VENDOR}"
     COMMAND ${CMAKE_COMMAND} -E echo "Building in: ${CMAKE_BUILD_TYPE} mode"
     COMMAND ${CMAKE_BINARY_DIR}/${PROJECT_NAME}
-    DEPENDS ${PROJECT_NAME} tests
-    $<$<BOOL:${ENABLE_TESTING}>:tests>
+    DEPENDS ${PROJECT_NAME} $<$<BOOL:${ENABLE_TESTING}>:tests>
 )
