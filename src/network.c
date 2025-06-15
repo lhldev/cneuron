@@ -13,7 +13,6 @@
 #endif
 
 #include "cneuron/cneuron.h"
-#include "rand.h"
 
 layer *get_layer(size_t length, size_t prev_length) {
     layer *new_layer = calloc(1, sizeof(layer));

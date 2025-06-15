@@ -1,8 +1,8 @@
-#include "rand.h"
-
 #include <assert.h>
 #include <string.h>
 #include <time.h>
+
+#include "cneuron/cneuron.h"
 
 struct rand_chunk randc = {
     .count = 2000,

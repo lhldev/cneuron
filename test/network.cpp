@@ -2,7 +2,6 @@
 
 extern "C" {
 #include "cneuron/cneuron.h"
-#include "rand.h"
 }
 
 #include <math.h>

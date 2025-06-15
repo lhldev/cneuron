@@ -4,6 +4,8 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#include "shishua/shishua.h"
+
 /**
  * @brief Represents a single data element with its inputs and expected output index.
  */
@@ -302,5 +304,18 @@ bool load_network(const char *filename, neural_network *nn);
  * @return The percentage of correct predictions.
  */
 float test_network_percent(neural_network *nn, const dataset *test_dataset);
+
+struct rand_chunk {
+    size_t count;
+    uint8_t buf[1024];  // NOTE: must be multiple of 256
+};
+
+uint8_t randnum_u8(uint8_t range, uint8_t offset);
+uint32_t randnum_u32(uint32_t range, uint32_t offset);
+float randf(float range, float offset);
+
+extern struct rand_chunk randc;
+
+extern prng_state __randstate;
 
 #endif

@@ -7,7 +7,6 @@
 #include <string.h>
 
 #include "cneuron/cneuron.h"
-#include "rand.h"
 
 #define BACKGROUND_VALUE 0.0f
 
@@ -149,8 +148,8 @@ void rotate_data(data *data, int width, int height, float angle) {
     assert(width > 0 && height > 0);
 
     float rad = angle * M_PI / 180.0f;
-    float cos_angle = cos(rad);
-    float sin_angle = sin(rad);
+    float cos_angle = cosf(rad);
+    float sin_angle = sinf(rad);
     float *new_inputs = malloc(sizeof(float) * width * height);
     if (!new_inputs) {
         return;
@@ -158,10 +157,10 @@ void rotate_data(data *data, int width, int height, float angle) {
 
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
-            int center_x = floor(width / 2.0f);
-            int center_y = floor(height / 2.0f);
-            int src_x = round((x - center_x) * cos_angle + (y - center_y) * sin_angle + center_x);
-            int src_y = round((y - center_y) * cos_angle - (x - center_x) * sin_angle + center_y);
+            int center_x = floorf(width / 2.0f);
+            int center_y = floorf(height / 2.0f);
+            int src_x = roundf((x - center_x) * cos_angle + (y - center_y) * sin_angle + center_x);
+            int src_y = roundf((y - center_y) * cos_angle - (x - center_x) * sin_angle + center_y);
 
             if (src_x >= 0 && src_x < width && src_y >= 0 && src_y < height) {
                 new_inputs[y * width + x] = data->inputs[src_y * width + src_x];
@@ -180,22 +179,22 @@ void scale_data(data *data, int width, int height, float scale) {
     assert(data->inputs);
     assert(width > 0 && height > 0);
 
-    int scale_width = round(width * scale);
-    int scale_height = round(height * scale);
+    int scale_width = roundf(width * scale);
+    int scale_height = roundf(height * scale);
     float *new_inputs = malloc(sizeof(float) * width * height);
     if (!new_inputs) {
         return;
     }
 
-    int offset_x = round((scale_width - width) / 2.0f);
-    int offset_y = round((scale_height - height) / 2.0f);
+    int offset_x = roundf((scale_width - width) / 2.0f);
+    int offset_y = roundf((scale_height - height) / 2.0f);
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
             int scaled_x = x + offset_x;
             int scaled_y = y + offset_y;
 
-            int src_x = round(scaled_x / scale);
-            int src_y = round(scaled_y / scale);
+            int src_x = roundf(scaled_x / scale);
+            int src_y = roundf(scaled_y / scale);
 
             if (src_x >= 0 && src_x < width && src_y >= 0 && src_y < height) {
                 new_inputs[y * width + x] = data->inputs[src_y * width + src_x];
@@ -224,8 +223,8 @@ void offset_data(data *data, int width, int height, float offset_x, float offset
             float new_x = x - offset_x;
             float new_y = y - offset_y;
 
-            int src_x = round(new_x);
-            int src_y = round(new_y);
+            int src_x = roundf(new_x);
+            int src_y = roundf(new_y);
             if (src_x >= 0 && src_x < width && src_y >= 0 && src_y < height) {
                 new_inputs[y * width + x] = data->inputs[src_y * width + src_x];
             } else {

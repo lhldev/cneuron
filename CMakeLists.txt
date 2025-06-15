@@ -36,15 +36,14 @@ set(WARNING_FLAGS -Wall -Wextra -Wpedantic)
 set(RELEASE_FLAGS -O3 -DNDEBUG -march=native)
 set(PROFILE_FLAG -O3 -p -g)
 
+set(INCLUDE_FOLDER ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/external ${CMAKE_SOURCE_DIR}/src)
+
 option(USE_THREADING "Enable multithreading support for batch training" ON)
 function(apply_target target)
     if(USE_THREADING)
         target_compile_definitions(${target} PRIVATE USE_THREADING)
     endif()
 
-    target_include_directories(${target} PRIVATE ${CMAKE_SOURCE_DIR}/include)
-    target_include_directories(${target} PRIVATE ${CMAKE_SOURCE_DIR}/external)
-    target_include_directories(${target} PRIVATE ${CMAKE_SOURCE_DIR}/src)
     target_compile_options(${target} PRIVATE ${WARNING_FLAGS})
     target_link_libraries(libcneuron PRIVATE ${BLAS_LIBRARIES} m)
 
@@ -61,11 +60,13 @@ endfunction()
 # libcneuron library
 add_library(libcneuron ${SRC_FILES})
 apply_target(libcneuron)
+target_include_directories(libcneuron PRIVATE ${INCLUDE_FOLDER})
 
 # Main executable
 add_executable(${PROJECT_NAME} src/main.c)
 apply_target(${PROJECT_NAME})
 target_link_libraries(${PROJECT_NAME} PRIVATE libcneuron)
+target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/external)
 
 # Test executable
 if(ENABLE_TESTING)
@@ -74,6 +75,7 @@ if(ENABLE_TESTING)
     target_include_directories(tests PRIVATE ${CMAKE_SOURCE_DIR}/test)
     target_link_libraries(tests PRIVATE libcneuron GTest::gtest_main)
     add_test(NAME tests COMMAND tests)
+    target_include_directories(tests PRIVATE ${INCLUDE_FOLDER})
 endif()
 
 
