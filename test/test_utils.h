@@ -1,7 +1,9 @@
 #ifndef TEST_UTILS_H
 #define TEST_UTILS_H
 
+extern "C" {
 #include "cneuron/cneuron.h"
+}
 
 float sigmoid(float val, bool is_deravative);
 

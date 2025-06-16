@@ -8,7 +8,27 @@
 
 #include "cneuron/cneuron.h"
 
-#define BACKGROUND_VALUE 0.0f
+data *alloc_data(size_t inputs_length) {
+    data *new_data = malloc(sizeof(data) + sizeof(float) * inputs_length);
+    new_data->inputs = (float *)(new_data + 1);
+
+    return new_data;
+}
+
+dataset *alloc_dataset(size_t dataset_length, size_t inputs_length) {
+    dataset *new_dataset = malloc(sizeof(dataset) + (sizeof(data) + sizeof(float) * inputs_length) * dataset_length);
+    if (!new_dataset) return NULL;
+    new_dataset->datas = (data *)(new_dataset + 1);
+    new_dataset->length = dataset_length;
+    new_dataset->inputs_length = inputs_length;
+
+    float *inputs_block = (float *)(new_dataset->datas + dataset_length);
+    for (size_t i = 0; i < dataset_length; i++) {
+        new_dataset->datas[i].inputs = inputs_block + i * inputs_length;
+    }
+
+    return new_dataset;
+}
 
 dataset *get_dataset(const char *filename) {
     assert(filename);
@@ -19,169 +39,111 @@ dataset *get_dataset(const char *filename) {
         return NULL;
     }
 
-    dataset *read_dataset = malloc(sizeof(dataset));
-    if (!read_dataset) {
-        fclose(file);
-        return NULL;
-    }
-
-    if (fread(&read_dataset->length, sizeof(uint64_t), 1, file) != 1) {
+    size_t dataset_length = 0;
+    if (fread(&dataset_length, sizeof(uint64_t), 1, file) != 1) {
         fprintf(stderr, "Failed to read dataset length from %s\n", filename);
-        free(read_dataset);
         fclose(file);
         return NULL;
     }
 
-    read_dataset->datas = calloc(read_dataset->length, sizeof(data *));
-    if (!read_dataset->datas) {
-        free(read_dataset);
-        fclose(file);
-        return NULL;
-    }
-
-    if (fread(&read_dataset->inputs_length, sizeof(uint64_t), 1, file) != 1) {
+    size_t inputs_length = 0;
+    if (fread(&inputs_length, sizeof(uint64_t), 1, file) != 1) {
         fprintf(stderr, "Failed to read inputs_length from %s\n", filename);
-        free(read_dataset);
         fclose(file);
         return NULL;
     }
 
-    for (size_t i = 0; i < read_dataset->length; i++) {
-        data *read_data = malloc(sizeof(data));
-        if (!read_data) {
-            goto cleanup;
-        }
+    dataset *read_dataset = alloc_dataset(dataset_length, inputs_length);
+    if (!read_dataset) {
+        fprintf(stderr, "Failed to allocate for dataset %s: %s\n", filename, strerror(errno));
+        fclose(file);
+        return NULL;
+    }
 
-        read_data->inputs = malloc(sizeof(float) * read_dataset->inputs_length);
-        if (!read_data->inputs) {
-            free(read_data);
-            goto cleanup;
-        }
-
+    for (size_t i = 0; i < dataset_length; i++) {
+        data *read_data = &read_dataset->datas[i];
         size_t read_inputs = fread(read_data->inputs, sizeof(float), read_dataset->inputs_length, file);
         if (read_inputs != read_dataset->inputs_length) {
             fprintf(stderr, "Invalid inputs_length from %s. Expected: %zu. But found: %zu\n", filename, read_dataset->inputs_length, read_inputs);
-            free_data(read_data);
-            goto cleanup;
+            free(read_dataset);
+            fclose(file);
+            return NULL;
         }
 
         if (fread(&(read_data->expected_index), sizeof(uint64_t), 1, file) != 1) {
             fprintf(stderr, "Failed to read expected_index from %s\n", filename);
-            free_data(read_data);
-            goto cleanup;
+            free(read_dataset);
+            fclose(file);
+            return NULL;
         }
-
-        read_dataset->datas[i] = read_data;
     }
 
     fclose(file);
 
     return read_dataset;
-
-cleanup:
-    free_dataset(read_dataset);
-    fclose(file);
-    return NULL;
 }
 
-void free_dataset(dataset *dataset) {
-    if (!dataset) {
-        return;
-    }
-
-    for (size_t i = 0; i < dataset->length; i++) {
-        free_data(dataset->datas[i]);
-    }
-    free(dataset->datas);
-    free(dataset);
-}
-
-void free_data(data *data) {
-    if (!data) {
-        return;
-    }
-
-    free(data->inputs);
-    free(data);
-}
-
-data *get_data_copy(const data *source_data, size_t inputs_length) {
-    assert(source_data);
-    assert(source_data->inputs);
+void copy_data(data *target_data, const data *source_data, size_t inputs_length) {
     assert(inputs_length > 0);
 
-    data *copy = malloc(sizeof(data));
-    if (!copy) {
-        return NULL;
-    }
-
-    copy->expected_index = source_data->expected_index;
-
     size_t inputs_size = sizeof(float) * inputs_length;
-    copy->inputs = malloc(inputs_size);
-    if (!copy->inputs) {
-        free(copy);
-        return NULL;
-    }
 
-    memcpy(copy->inputs, source_data->inputs, inputs_size);
-
-    return copy;
+    target_data->expected_index = source_data->expected_index;
+    memcpy(target_data->inputs, source_data->inputs, inputs_size);
 }
 
 dataset *get_random_dataset_sample(const dataset *source_dataset, size_t amount) {
-    dataset *new_dataset = malloc(sizeof(dataset));
-    new_dataset->inputs_length = source_dataset->inputs_length;
+    assert(source_dataset);
+    dataset *new_dataset = alloc_dataset(amount, source_dataset->inputs_length);
+    if (!new_dataset) {
+        return NULL;
+    }
+    new_dataset->datas = (data *)(new_dataset + 1);
     new_dataset->length = amount;
-    new_dataset->datas = malloc(sizeof(data) * amount);
+    new_dataset->inputs_length = source_dataset->inputs_length;
 
     for (size_t i = 0; i < amount; i++) {
-        new_dataset->datas[i] = get_data_copy(source_dataset->datas[randnum_u32(source_dataset->length, 0)], source_dataset->inputs_length);
+        data *random_data = &source_dataset->datas[randnum_u32(source_dataset->length, 0)];
+        copy_data(&new_dataset->datas[i], random_data, source_dataset->inputs_length);
     }
 
     return new_dataset;
 }
 
 void rotate_data(data *data, int width, int height, float angle) {
-    assert(data);
-    assert(data->inputs);
     assert(width > 0 && height > 0);
 
     float rad = angle * M_PI / 180.0f;
     float cos_angle = cosf(rad);
     float sin_angle = sinf(rad);
-    float *new_inputs = malloc(sizeof(float) * width * height);
+    float *new_inputs = calloc(width * height, sizeof(float));
     if (!new_inputs) {
         return;
     }
 
+    int center_x = floorf(width / 2.0f);
+    int center_y = floorf(height / 2.0f);
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
-            int center_x = floorf(width / 2.0f);
-            int center_y = floorf(height / 2.0f);
             int src_x = roundf((x - center_x) * cos_angle + (y - center_y) * sin_angle + center_x);
             int src_y = roundf((y - center_y) * cos_angle - (x - center_x) * sin_angle + center_y);
 
             if (src_x >= 0 && src_x < width && src_y >= 0 && src_y < height) {
                 new_inputs[y * width + x] = data->inputs[src_y * width + src_x];
-            } else {
-                new_inputs[y * width + x] = BACKGROUND_VALUE;
             }
         }
     }
 
-    free(data->inputs);
-    data->inputs = new_inputs;
+    memcpy(data->inputs, new_inputs, sizeof(float) * width * height);
+    free(new_inputs);
 }
 
 void scale_data(data *data, int width, int height, float scale) {
-    assert(data);
-    assert(data->inputs);
     assert(width > 0 && height > 0);
 
     int scale_width = roundf(width * scale);
     int scale_height = roundf(height * scale);
-    float *new_inputs = malloc(sizeof(float) * width * height);
+    float *new_inputs = calloc(width * height, sizeof(float));
     if (!new_inputs) {
         return;
     }
@@ -198,22 +160,18 @@ void scale_data(data *data, int width, int height, float scale) {
 
             if (src_x >= 0 && src_x < width && src_y >= 0 && src_y < height) {
                 new_inputs[y * width + x] = data->inputs[src_y * width + src_x];
-            } else {
-                new_inputs[y * width + x] = BACKGROUND_VALUE;
             }
         }
     }
 
-    free(data->inputs);
-    data->inputs = new_inputs;
+    memcpy(data->inputs, new_inputs, sizeof(float) * width * height);
+    free(new_inputs);
 }
 
 void offset_data(data *data, int width, int height, float offset_x, float offset_y) {
-    assert(data);
-    assert(data->inputs);
     assert(width > 0 && height > 0);
 
-    float *new_inputs = malloc(sizeof(float) * width * height);
+    float *new_inputs = calloc(width * height, sizeof(float));
     if (!new_inputs) {
         return;
     }
@@ -227,18 +185,14 @@ void offset_data(data *data, int width, int height, float offset_x, float offset
             int src_y = roundf(new_y);
             if (src_x >= 0 && src_x < width && src_y >= 0 && src_y < height) {
                 new_inputs[y * width + x] = data->inputs[src_y * width + src_x];
-            } else {
-                new_inputs[y * width + x] = BACKGROUND_VALUE;
             }
         }
     }
-    free(data->inputs);
-    data->inputs = new_inputs;
+    memcpy(data->inputs, new_inputs, sizeof(float) * width * height);
+    free(new_inputs);
 }
 
 void noise_data(data *data, size_t inputs_length, float noise_factor, float probability) {
-    assert(data);
-    assert(data->inputs);
     assert(inputs_length > 0);
 
     for (size_t i = 0; i < inputs_length; i++) {
@@ -252,8 +206,6 @@ void noise_data(data *data, size_t inputs_length, float noise_factor, float prob
 }
 
 float output_expected(size_t index, const data *data) {
-    assert(data);
-
     if (index == data->expected_index) {
         return 1.0f;
     } else {

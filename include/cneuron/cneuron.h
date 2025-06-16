@@ -10,8 +10,8 @@
  * @brief Represents a single data element with its inputs and expected output index.
  */
 typedef struct {
-    float *inputs;         /**< Pointer to an array of input values. */
     size_t expected_index; /**< Index of the expected output label. */
+    float *inputs;         /**< Pointer to an array of input values. */
 } data;
 
 /**
@@ -20,8 +20,27 @@ typedef struct {
 typedef struct {
     size_t length;        /**< Number of data elements in the dataset. */
     size_t inputs_length; /**< Number of input values per data element. */
-    data **datas;         /**< Array of pointers containing the datas */
+    data *datas;          /**< Array containing the datas */
 } dataset;
+
+/**
+ * @brief Allocate and setup a data
+ *
+ * @param inputs_length Number of input of the data
+ *
+ * @return Newly allocated data
+ */
+data *alloc_data(size_t inputs_length);
+
+/**
+ * @brief Allocate and setup a dataset
+ *
+ * @param dataset_length Number of data of the dataset
+ * @param inputs_length Number of input of the data
+ *
+ * @return newly allocated dataset
+ */
+dataset *alloc_dataset(size_t dataset_length, size_t inputs_length);
 
 /**
  * @brief Reads a dataset from the specified file.
@@ -32,27 +51,13 @@ typedef struct {
 dataset *get_dataset(const char *filename);
 
 /**
- * @brief Frees all memory associated with a 'dataset' structure and its contents.
- *
- * @param dataset Pointer to the dataset to be freed.
- */
-void free_dataset(dataset *dataset);
-
-/**
- * @brief Frees all memory associated with a 'data' structure and its conetents.
- *
- * @param data Pointer to the data element to be freed.
- */
-void free_data(data *data);
-
-/**
- * @brief Creates a copy of a 'data' structure.
+ * @brief Copy a 'data' structure.
  *
  * @param source_data Pointer to the original data element to copy.
+ * @param target_data Pointer to the destination data element to perform deep copy.
  * @param inputs_length Number of input values in the data element.
- * @return Pointer to the newly created copy of the 'data' structure.
  */
-data *get_data_copy(const data *source_data, size_t inputs_length);
+void copy_data(data *target_data, const data *source_data, size_t inputs_length);
 
 /**
  * @brief Creates allocate new dataset and select random copy of data from a source dataset.
@@ -139,59 +144,46 @@ void hadamard_product(const float *a, const float *b, float *c, size_t length);
  * @brief Represents a single layer in a neural network.
  */
 typedef struct layer {
-    float *delta;             /**< Error delta for backpropagation. */
-    float *weighted_input;    /**< Weighted input values for the layer. */
-    float *weights;           /**< Weights of the layer in column-major format. */
-    float *bias;              /**< Bias values for the layer. */
-    float *output;            /**< Output values from the layer. */
-    struct layer *prev_layer; /**< Pointer to the previous layer in the network. */
-    struct layer *next_layer; /**< Pointer to the next layer in the network. */
-    size_t length;            /**< Number of neurons in this layer. */
+    float *delta;          /**< Error delta for backpropagation. */
+    float *weighted_input; /**< Weighted input values for the layer. */
+    float *weights;        /**< Weights of the layer in column-major format. */
+    float *bias;           /**< Bias values for the layer. */
+    float *output;         /**< Output values from the layer. */
+    size_t length;         /**< Number of neurons in this layer. */
 } layer;
 
 /**
  * @brief Represents a neural network with multiple layers.
  */
 typedef struct {
-    layer **layers;                            /**< Array of pointers to layers in the network. */
+    layer *layers;                             /**< Array of struct to layers in the network. */
     size_t length;                             /**< Number of layers in the network. */
     size_t inputs_length;                      /**< Number of inputs to the network. */
     float (*activation_function)(float, bool); /**< Pointer to the activation function used in the network. */
 } neural_network;
 
 /**
- * @brief Allocates and initializes a new layer.
+ * @brief Allocate and setup a neural_network
  *
- * @param length Number of neurons in this layer.
- * @param prev_length Number of neurons in the previous layer.
- * @return Pointer to the newly created layer.
+ * @param network_length Number of layers in the network.
+ * @param layers_length Array specifying the number of neurons in each layer.
+ * @param inputs_length Number of inputs to the network.
+ *
+ * @return Newly allocated data
  */
-layer *get_layer(size_t length, size_t prev_length);
+neural_network *alloc_neural_network(size_t network_length, const size_t *layers_length, size_t inputs_length);
 
 /**
  * @brief Allocates and initializes a new neural network.
  *
- * @param layer_length Number of layers in the network.
- * @param layer_lengths Array specifying the number of neurons in each layer.
+ * @param network_length Number of layers in the network.
+ * @param layers_length Array specifying the number of neurons in each layer.
  * @param inputs_length Number of inputs to the network.
  * @param activation_function Activation function to be used in the network.
+ *
  * @return Pointer to the newly created neural network.
  */
-neural_network *get_neural_network(size_t layer_length, const size_t *layer_lengths, size_t inputs_length, float (*activation_function)(float, bool));
-
-/**
- * @brief Frees all memory associated with a 'layer' structure and its conetents.
- *
- * @param layer Pointer to the layer to be freed.
- */
-void free_layer(layer *layer);
-
-/**
- * @brief Frees all memory associated with a 'neural_network' structure and its conetents.
- *
- * @param nn Pointer to the neural network to be freed.
- */
-void free_neural_network(neural_network *nn);
+neural_network *get_neural_network(size_t network_length, const size_t *layers_length, size_t inputs_length, float (*activation_function)(float, bool));
 
 /**
  * @brief Computes the output of the neural network for the given inputs.

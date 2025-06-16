@@ -31,7 +31,7 @@ endif()
 file(GLOB_RECURSE SRC_FILES src/*.c EXCLUDE "src/main.c")
 file(GLOB_RECURSE TEST_FILES test/*.cpp)
 
-set(ASAN_FLAGS -fsanitize=address -fno-omit-frame-pointer)
+set(SANITIZE_FLAGS -fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer)
 set(WARNING_FLAGS -Wall -Wextra -Wpedantic)
 set(RELEASE_FLAGS -O3 -DNDEBUG -march=native)
 set(PROFILE_FLAG -O3 -p -g)
@@ -45,11 +45,10 @@ function(apply_target target)
     endif()
 
     target_compile_options(${target} PRIVATE ${WARNING_FLAGS})
-    target_link_libraries(libcneuron PRIVATE ${BLAS_LIBRARIES} m)
 
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-        target_compile_options(${target} PRIVATE ${ASAN_FLAGS} -g)
-        target_link_options(${target} PRIVATE ${ASAN_FLAGS})
+        target_compile_options(${target} PRIVATE ${SANITIZE_FLAGS} -g)
+        target_link_options(${target} PRIVATE ${SANITIZE_FLAGS})
     elseif(CMAKE_BUILD_TYPE STREQUAL "Profile")
         target_compile_options(${target} PRIVATE ${PROFILE_FLAG})
     elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
@@ -60,6 +59,7 @@ endfunction()
 # libcneuron library
 add_library(libcneuron ${SRC_FILES})
 apply_target(libcneuron)
+target_link_libraries(libcneuron PRIVATE ${BLAS_LIBRARIES} m)
 target_include_directories(libcneuron PRIVATE ${INCLUDE_FOLDER})
 
 # Main executable
