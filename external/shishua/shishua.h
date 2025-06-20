@@ -37,7 +37,6 @@
 #elif SHISHUA_TARGET == SHISHUA_TARGET_NEON
 #include "shishua-neon.h"
 #else  // SHISHUA_TARGET == SHISHUA_TARGET_SCALAR
-
 // Portable scalar implementation of shishua.
 // Designed to balance performance and code size.
 #include <assert.h>
