@@ -12,3 +12,6 @@ cmake -S . -B build -DBLA_VENDOR=Intel10_64lp_seq -DCMAKE_BUILD_TYPE=Release -DE
 ## Benchmark - Highest average recorded
 - Intel Core i5 9th Gen: ~150,000 Data/s
 - Intel Core Ultra 5: ~250,000 Data/s
+
+## This project utilizes the **MNIST dataset**
+Information regarding its license (Creative Commons Attribution-ShareAlike 3.0) and attribution can be found in the [data/mnist/MNIST_Copyright.md](data/mnist/MNIST_Copyright.md) file
