@@ -3,8 +3,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
-
-#include "shishua/shishua.h"
+#include <stdint.h>
 
 /**
  * @brief Represents a single data element with its inputs and expected output index.
@@ -307,7 +306,4 @@ uint32_t randnum_u32(uint32_t range, uint32_t offset);
 float randf(float range, float offset);
 
 extern struct rand_chunk randc;
-
-extern prng_state __randstate;
-
 #endif

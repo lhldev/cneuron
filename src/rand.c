@@ -3,6 +3,7 @@
 #include <time.h>
 
 #include "cneuron/cneuron.h"
+#include "shishua/shishua.h"
 
 struct rand_chunk randc = {
     .count = 2000,
