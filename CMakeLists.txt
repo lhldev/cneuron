@@ -55,20 +55,20 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
 endif()
 
 # libcneuron library
-add_library(libcneuron ${SRC_FILES})
-target_link_libraries(libcneuron PRIVATE ${BLAS_LIBRARIES} m)
-target_include_directories(libcneuron PRIVATE ${INCLUDE_FOLDER})
+add_library(cneuron ${SRC_FILES})
+target_link_libraries(cneuron PRIVATE ${BLAS_LIBRARIES} m)
+target_include_directories(cneuron PRIVATE ${INCLUDE_FOLDER})
 
 # Main executable
-add_executable(${PROJECT_NAME} src/main.c)
-target_link_libraries(${PROJECT_NAME} PRIVATE libcneuron)
-target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/external)
+add_executable(cneuron_cli src/main.c)
+target_link_libraries(cneuron_cli PRIVATE cneuron)
+target_include_directories(cneuron_cli PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/external)
 
 # Test executable
 if(ENABLE_TESTING)
     add_executable(tests ${TEST_FILES})
     target_include_directories(tests PRIVATE ${CMAKE_SOURCE_DIR}/test)
-    target_link_libraries(tests PRIVATE libcneuron GTest::gtest_main)
+    target_link_libraries(tests PRIVATE cneuron GTest::gtest_main)
     add_test(NAME tests COMMAND tests)
     target_include_directories(tests PRIVATE ${INCLUDE_FOLDER})
 endif()
@@ -81,6 +81,6 @@ file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/output)
 add_custom_target(run
     COMMAND ${CMAKE_COMMAND} -E echo "Using BLAS vendor: ${BLA_VENDOR}"
     COMMAND ${CMAKE_COMMAND} -E echo "Building in: ${CMAKE_BUILD_TYPE} mode"
-    COMMAND ${CMAKE_BINARY_DIR}/${PROJECT_NAME}
-    DEPENDS ${PROJECT_NAME} $<$<BOOL:${ENABLE_TESTING}>:tests>
+    COMMAND ${CMAKE_BINARY_DIR}/cneuron_cli
+    DEPENDS cneuron_cli $<$<BOOL:${ENABLE_TESTING}>:tests>
 )
