@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <cblas.h>
 #include <errno.h>
+#include <float.h>
 #include <math.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -83,7 +84,7 @@ float softmax(neural_network *nn, size_t neuron_index) {
     assert(nn);
 
     float sum = 0.0f;
-    float max_output = -INFINITY;
+    float max_output = -FLT_MAX;
 
     layer *output_layer = &nn->layers[nn->length - 1];
     for (size_t i = 0; i < output_layer->length; i++) {
