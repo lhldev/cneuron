@@ -135,7 +135,6 @@ void vector_apply_activation(const float *a, float *b, size_t length, float (*ac
  * @param b Pointer to the second vector.
  * @param c Pointer to the resulting vector.
  * @param length Number of element of the vector.
- * @param activation_function Activation function used to apply activation.
  */
 void hadamard_product(const float *a, const float *b, float *c, size_t length);
 
@@ -227,7 +226,6 @@ float cost(neural_network *nn, const dataset *test_dataset, size_t num_test);
  * @param layer_index Index of the layer to perform learning on.
  * @param learn_rate Learning rate for weight updates.
  * @param data Pointer to the data element used for learning.
- * @param activation_function Pointer to the activation function.
  *
  * @note The network must be computed using 'compute_network' prior to calling this function.
  */
@@ -237,11 +235,10 @@ void layer_learn(neural_network *nn, size_t layer_index, float learn_rate, const
  * @brief Performs backpropagation for a specific layer but add the change in gradient to a array.
  *
  * @param nn Pointer to the neural network.
- * @param layer_index Index of the layer to perform backpropagation on.
  * @param layer_weights_gradients Pointer to an array of weights to be added to.
  * @param layer_weights_bias Pointer to an array of bias to be added to.
+ * @param layer_index Index of the layer to perform learning on.
  * @param data Pointer to the data element used for learning.
- * @param activation_function Pointer to the activation function.
  *
  * @note The network must be computed using 'compute_network' prior to calling this function.
  */
