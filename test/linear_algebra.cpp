@@ -30,6 +30,7 @@ TEST(LinearAlgebraTest, HadamardProduct) {
     size_t length = 3;
     float *a = (float *)malloc(sizeof(float) * length);
     float *b = (float *)malloc(sizeof(float) * length);
+    float *c = (float *)malloc(sizeof(float) * length);
 
     a[0] = 1.0f;
     a[1] = -1.2f;
@@ -39,12 +40,13 @@ TEST(LinearAlgebraTest, HadamardProduct) {
     b[1] = -2.2f;
     b[2] = -0.4f;
 
-    hadamard_product(a, b, b, length);
+    hadamard_product(a, b, c, length);
 
-    ASSERT_FLOAT_EQ(b[0], 1.2f);
-    ASSERT_FLOAT_EQ(b[1], 2.64f);
-    ASSERT_FLOAT_EQ(b[2], 0.08f);
+    ASSERT_FLOAT_EQ(c[0], 1.2f);
+    ASSERT_FLOAT_EQ(c[1], 2.64f);
+    ASSERT_FLOAT_EQ(c[2], 0.08f);
 
     free(a);
     free(b);
+    free(c);
 }

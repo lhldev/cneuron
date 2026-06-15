@@ -83,7 +83,7 @@ dataset *get_dataset(const char *filename) {
     return read_dataset;
 }
 
-void copy_data(data *target_data, const data *source_data, size_t inputs_length) {
+void copy_data(data *restrict target_data, const data *restrict source_data, size_t inputs_length) {
     assert(inputs_length > 0);
 
     size_t inputs_size = sizeof(float) * inputs_length;

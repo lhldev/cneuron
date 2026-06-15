@@ -1,6 +1,10 @@
 #ifndef CNEURON_H
 #define CNEURON_H
 
+#ifdef __cplusplus
+#define restrict __restrict
+#endif
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -56,7 +60,7 @@ dataset *get_dataset(const char *filename);
  * @param target_data Pointer to the destination data element to perform deep copy.
  * @param inputs_length Number of input values in the data element.
  */
-void copy_data(data *target_data, const data *source_data, size_t inputs_length);
+void copy_data(data *restrict target_data, const data *restrict source_data, size_t inputs_length);
 
 /**
  * @brief Creates allocate new dataset and select random copy of data from a source dataset.
@@ -136,7 +140,7 @@ void vector_apply_activation(const float *a, float *b, size_t length, float (*ac
  * @param c Pointer to the resulting vector.
  * @param length Number of element of the vector.
  */
-void hadamard_product(const float *a, const float *b, float *c, size_t length);
+void hadamard_product(const float *restrict a, const float *restrict b, float *restrict c, size_t length);
 
 /**
  * @brief Represents a single layer in a neural network.
@@ -191,7 +195,7 @@ neural_network *get_neural_network(size_t network_length, const size_t *layers_l
  *
  * @note The weights and biases are automatically initialized when the network is created using 'get_neural_network'. Ensure the network is created properly before calling this function.
  */
-void compute_network(neural_network *nn, const float *inputs);
+void compute_network(neural_network *restrict nn, const float *restrict inputs);
 
 /**
  * @brief Applies the softmax function for a specific neuron in the output layer.
@@ -242,7 +246,7 @@ void layer_learn(neural_network *nn, size_t layer_index, float learn_rate, const
  *
  * @note The network must be computed using 'compute_network' prior to calling this function.
  */
-void layer_learn_collect_gradient(neural_network *nn, float *layer_weights_gradients, float *layer_bias_gradients, size_t layer_index, const data *data);
+void layer_learn_collect_gradient(neural_network *nn, float *restrict layer_weights_gradients, float *restrict layer_bias_gradients, size_t layer_index, const data *data);
 
 /**
  * @brief Performs stochastic gradient descent to the network.
@@ -273,7 +277,7 @@ void mini_batch_gd(neural_network *nn, float learn_rate, const dataset *data_bat
  * @param nn Pointer to the neural network to save.
  * @return True if the network was successfully saved, false otherwise.
  */
-bool save_network(const char *filename, neural_network *nn);
+bool save_network(const char *restrict filename, neural_network *restrict nn);
 
 /**
  * @brief Loads a neural network from a file.
@@ -282,7 +286,7 @@ bool save_network(const char *filename, neural_network *nn);
  * @param nn Pointer to the neural network structure to load into.
  * @return True if the network was successfully loaded, false otherwise.
  */
-bool load_network(const char *filename, neural_network *nn);
+bool load_network(const char *restrict filename, neural_network *restrict nn);
 
 /**
  * @brief Tests the accuracy of the neural network on a test dataset.

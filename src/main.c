@@ -47,7 +47,7 @@ dataset *dataset_generator(generator_args *args) {
     return batch_dataset;
 }
 
-void train(neural_network *nn, dataset *train_dataset, dataset *test_dataset, float learn_rate, int batch_amount, int log_amount, size_t batch_size) {
+void train(neural_network *nn, dataset *restrict train_dataset, dataset *restrict test_dataset, float learn_rate, int batch_amount, int log_amount, size_t batch_size) {
 #ifdef USE_THREADING
     pthread_t thread;
 #endif

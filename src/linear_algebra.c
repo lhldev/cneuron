@@ -10,7 +10,7 @@ void vector_apply_activation(const float *a, float *b, size_t length, float (*ac
     }
 }
 
-void hadamard_product(const float *a, const float *b, float *c, size_t length) {
+void hadamard_product(const float *restrict a, const float *restrict b, float *restrict c, size_t length) {
     assert(a && b && c);
 
     for (size_t i = 0; i < length; i++) {

@@ -63,7 +63,7 @@ neural_network *get_neural_network(size_t network_length, const size_t *layers_l
     return nn;
 }
 
-void compute_network(neural_network *nn, const float *inputs) {
+void compute_network(neural_network *restrict nn, const float *restrict inputs) {
     assert(nn && inputs);
 
     for (size_t i = 0; i < nn->length; i++) {
@@ -205,7 +205,7 @@ void layer_learn(neural_network *nn, size_t layer_index, float learn_rate, const
     free(weight_gradient);
 }
 
-void layer_learn_collect_gradient(neural_network *nn, float *layer_weights_gradients, float *layer_bias_gradients, size_t layer_index, const data *data) {
+void layer_learn_collect_gradient(neural_network *nn, float *restrict layer_weights_gradients, float *restrict layer_bias_gradients, size_t layer_index, const data *data) {
     assert(nn && layer_weights_gradients && layer_bias_gradients && data);
 
     layer *curr_layer = &nn->layers[layer_index];
@@ -317,7 +317,7 @@ void mini_batch_gd(neural_network *nn, float learn_rate, const dataset *data_bat
     free(bias_gradients);
 }
 
-bool save_network(const char *filename, neural_network *nn) {
+bool save_network(const char *restrict filename, neural_network *restrict nn) {
     assert(filename && nn);
 
     FILE *file = fopen(filename, "wb");
@@ -347,7 +347,7 @@ bool save_network(const char *filename, neural_network *nn) {
     return true;
 }
 
-bool load_network(const char *filename, neural_network *nn) {
+bool load_network(const char *restrict filename, neural_network *restrict nn) {
     assert(filename && nn);
 
     FILE *file = fopen(filename, "rb");
