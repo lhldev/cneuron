@@ -63,7 +63,7 @@ neural_network *get_neural_network(size_t network_length, const size_t *layers_l
     return nn;
 }
 
-void compute_network(neural_network *restrict nn, const float *restrict inputs) {
+void compute_network(const neural_network *restrict nn, const float *restrict inputs) {
     assert(nn && inputs);
 
     for (size_t i = 0; i < nn->length; i++) {
@@ -80,7 +80,7 @@ void compute_network(neural_network *restrict nn, const float *restrict inputs) 
     }
 }
 
-float softmax(neural_network *nn, size_t neuron_index) {
+float softmax(const neural_network *nn, size_t neuron_index) {
     assert(nn);
 
     float sum = 0.0f;
@@ -98,7 +98,7 @@ float softmax(neural_network *nn, size_t neuron_index) {
     return expf(output_layer->output[neuron_index] - max_output) / sum;
 }
 
-void print_activation_percentages(neural_network *nn) {
+void print_activation_percentages(const neural_network *nn) {
     assert(nn);
 
     layer *output_layer = &nn->layers[nn->length - 1];
@@ -144,7 +144,7 @@ void print_activation_percentages(neural_network *nn) {
     free(indices);
 }
 
-float cost(neural_network *nn, const dataset *test_dataset, size_t num_test) {
+float cost(const neural_network *nn, const dataset *test_dataset, size_t num_test) {
     assert(nn && test_dataset);
 
     float cost = 0.0f;
@@ -161,7 +161,7 @@ float cost(neural_network *nn, const dataset *test_dataset, size_t num_test) {
     return cost / num_test;
 }
 
-void print_result(neural_network *nn) {
+void print_result(const neural_network *nn) {
     assert(nn);
 
     layer *output_layer = &nn->layers[nn->length - 1];
@@ -169,7 +169,7 @@ void print_result(neural_network *nn) {
         printf("%f ", output_layer->output[i]);
 }
 
-void layer_learn(neural_network *nn, size_t layer_index, float learn_rate, const data *data) {
+void layer_learn(const neural_network *nn, size_t layer_index, float learn_rate, const data *data) {
     assert(nn && data);
 
     layer *curr_layer = &nn->layers[layer_index];
@@ -205,7 +205,7 @@ void layer_learn(neural_network *nn, size_t layer_index, float learn_rate, const
     free(weight_gradient);
 }
 
-void layer_learn_collect_gradient(neural_network *nn, float *restrict layer_weights_gradients, float *restrict layer_bias_gradients, size_t layer_index, const data *data) {
+void layer_learn_collect_gradient(const neural_network *nn, float *restrict layer_weights_gradients, float *restrict layer_bias_gradients, size_t layer_index, const data *data) {
     assert(nn && layer_weights_gradients && layer_bias_gradients && data);
 
     layer *curr_layer = &nn->layers[layer_index];
@@ -234,7 +234,7 @@ void layer_learn_collect_gradient(neural_network *nn, float *restrict layer_weig
     cblas_saxpy(curr_layer->length, 1.0f, curr_layer->delta, 1, layer_bias_gradients, 1);
 }
 
-void stochastic_gd(neural_network *nn, float learn_rate, const data *data) {
+void stochastic_gd(const neural_network *nn, float learn_rate, const data *data) {
     assert(nn && data);
 
     compute_network(nn, data->inputs);
@@ -279,7 +279,7 @@ void *thread_worker(void *arg) {
     return NULL;
 }
 
-void mini_batch_gd(neural_network *nn, float learn_rate, const dataset *data_batch) {
+void mini_batch_gd(const neural_network *nn, float learn_rate, const dataset *data_batch) {
     assert(nn && data_batch);
 
     ThreadArgs args;
@@ -402,7 +402,7 @@ cleanup:
     return false;
 }
 
-float test_network_percent(neural_network *nn, const dataset *test_dataset) {
+float test_network_percent(const neural_network *nn, const dataset *test_dataset) {
     assert(nn);
     assert(test_dataset);
 
