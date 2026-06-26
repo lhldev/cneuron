@@ -317,7 +317,7 @@ void mini_batch_gd(const neural_network *nn, float learn_rate, const dataset *da
     free(bias_gradients);
 }
 
-bool save_network(const char *restrict filename, neural_network *restrict nn) {
+bool save_network(const char *restrict filename, const neural_network *restrict nn) {
     assert(filename && nn);
 
     FILE *file = fopen(filename, "wb");
@@ -347,7 +347,7 @@ bool save_network(const char *restrict filename, neural_network *restrict nn) {
     return true;
 }
 
-bool load_network(const char *restrict filename, neural_network *restrict nn) {
+bool load_network(const char *restrict filename, const neural_network *restrict nn) {
     assert(filename && nn);
 
     FILE *file = fopen(filename, "rb");

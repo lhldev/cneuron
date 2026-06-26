@@ -51,46 +51,42 @@ dataset *get_random_dataset_sample(const dataset *source_dataset, size_t amount)
  * @brief Rotates the data by a specified angle.
  *
  * @param data Float pointer to the start of data to modify.
- * @param data_size Size of the data to modify.
  * @param width Width of the data (e.g., for image data).
  * @param height Height of the data.
  * @param angle Rotation angle in degrees.
  */
-void rotate_data(float *data, size_t data_size, int width, int height, float angle);
+void rotate_data(float *data, int width, int height, float angle);
 
 /**
  * @brief Scales the data by a specified factor.
  *
  * @param data Float pointer to the start of data to modify.
- * @param data_size Size of the data to modify.
  * @param width Width of the data (e.g., for image data).
  * @param height Height of the data.
  * @param scale Scaling factor.
  */
-void scale_data(float *data, size_t data_size, int width, int height, float scale);
+void scale_data(float *data, int width, int height, float scale);
 
 /**
  * @brief Applies an offset to the data in both x and y directions.
  *
  * @param data Float pointer to the start of data to modify.
- * @param data_size Size of the data to modify.
  * @param width Width of the data (e.g., for image data).
  * @param height Height of the data.
  * @param offset_x Offset value in the x-direction.
  * @param offset_y Offset value in the y-direction.
  */
-void offset_data(float *data, size_t data_size, int width, int height, float offset_x, float offset_y);
+void offset_data(float *data, int width, int height, float offset_x, float offset_y);
 
 /**
  * @brief Adds noise to the data with a given intensity and probability.
  *
  * @param data Float pointer to the start of data to modify.
- * @param data_size Size of the data to modify.
  * @param inputs_length Number of input values in the data element.
  * @param noise_factor Intensity of the noise to be added.
  * @param probability Probability of adding noise to each input value.
  */
-void noise_data(float *data, size_t data_size, size_t inputs_length, float noise_factor, float probability);
+void noise_data(float *data, size_t inputs_length, float noise_factor, float probability);
 
 /**
  * @brief Apply activation to a vector.
@@ -260,7 +256,7 @@ bool save_network(const char *restrict filename, const neural_network *restrict 
  * @param nn Pointer to the neural network structure to load into.
  * @return True if the network was successfully loaded, false otherwise.
  */
-bool load_network(const char *restrict filename, neural_network *restrict nn);
+bool load_network(const char *restrict filename, const neural_network *restrict nn);
 
 /**
  * @brief Tests the accuracy of the neural network on a test dataset.
