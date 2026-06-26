@@ -151,11 +151,12 @@ float cost(const neural_network *nn, const dataset *test_dataset, size_t num_tes
 
     layer *output_layer = &nn->layers[nn->length - 1];
     for (size_t i = 0; i < num_test; i++) {
-        data *test_data = &test_dataset->datas[randnum_u32(test_dataset->length, 0)];
-        compute_network(nn, test_data->inputs);
+        uint32_t randnum = randnum_u32(test_dataset->length, 0);
+        float *test_data = &test_dataset->all_inputs[randnum * test_dataset->inputs_length];
+        compute_network(nn, test_data);
         for (size_t j = 0; j < output_layer->length; j++) {
             float output = output_layer->output[j];
-            cost += (output - output_expected(j, test_data)) * (output - output_expected(j, test_data));
+            cost += (output - (j == test_dataset->expected_indices[randnum])) * (output - (j == test_dataset->expected_indices[randnum]));
         }
     }
     return cost / num_test;
@@ -169,7 +170,7 @@ void print_result(const neural_network *nn) {
         printf("%f ", output_layer->output[i]);
 }
 
-void layer_learn(const neural_network *nn, size_t layer_index, float learn_rate, const data *data) {
+void layer_learn(const neural_network *nn, size_t layer_index, float learn_rate, const float *data, const size_t data_expected_index) {
     assert(nn && data);
 
     layer *curr_layer = &nn->layers[layer_index];
@@ -178,7 +179,7 @@ void layer_learn(const neural_network *nn, size_t layer_index, float learn_rate,
     vector_apply_activation(curr_layer->weighted_input, curr_layer->weighted_input, curr_layer->length, nn->activation_function, true);
     if (layer_index == nn->length - 1) {
         // Error in output
-        curr_layer->output[data->expected_index] -= 1.0f;
+        curr_layer->output[data_expected_index] -= 1.0f;
     } else {
         // W^T_{i+1}δ_{i+1} in output
         layer *next_layer = &nn->layers[layer_index + 1];
@@ -190,7 +191,7 @@ void layer_learn(const neural_network *nn, size_t layer_index, float learn_rate,
     float *weight_gradient;
     if (layer_index == 0) {
         weight_gradient = calloc(curr_layer->length * nn->inputs_length, sizeof(float));
-        cblas_sger(CblasColMajor, curr_layer->length, nn->inputs_length, 1.0f, curr_layer->delta, 1, data->inputs, 1, weight_gradient, curr_layer->length);
+        cblas_sger(CblasColMajor, curr_layer->length, nn->inputs_length, 1.0f, curr_layer->delta, 1, data, 1, weight_gradient, curr_layer->length);
         cblas_saxpy(curr_layer->length * nn->inputs_length, -learn_rate, weight_gradient, 1, curr_layer->weights, 1);
     } else {
         layer *prev_layer = &nn->layers[layer_index - 1];
@@ -205,7 +206,7 @@ void layer_learn(const neural_network *nn, size_t layer_index, float learn_rate,
     free(weight_gradient);
 }
 
-void layer_learn_collect_gradient(const neural_network *nn, float *restrict layer_weights_gradients, float *restrict layer_bias_gradients, size_t layer_index, const data *data) {
+void layer_learn_collect_gradient(const neural_network *nn, float *restrict layer_weights_gradients, float *restrict layer_bias_gradients, size_t layer_index, const float *data, size_t data_expected_index) {
     assert(nn && layer_weights_gradients && layer_bias_gradients && data);
 
     layer *curr_layer = &nn->layers[layer_index];
@@ -214,7 +215,7 @@ void layer_learn_collect_gradient(const neural_network *nn, float *restrict laye
     vector_apply_activation(curr_layer->weighted_input, curr_layer->weighted_input, curr_layer->length, nn->activation_function, true);
     if (layer_index == nn->length - 1) {
         // Error in output
-        curr_layer->output[data->expected_index] -= 1.0f;
+        curr_layer->output[data_expected_index] -= 1.0f;
     } else {
         // W^T_{i+1}δ_{i+1} in output
         layer *next_layer = &nn->layers[layer_index + 1];
@@ -224,7 +225,7 @@ void layer_learn_collect_gradient(const neural_network *nn, float *restrict laye
     hadamard_product(curr_layer->weighted_input, curr_layer->output, curr_layer->delta, curr_layer->length);
 
     if (layer_index == 0) {
-        cblas_sger(CblasColMajor, curr_layer->length, nn->inputs_length, 1.0f, curr_layer->delta, 1, data->inputs, 1, layer_weights_gradients, curr_layer->length);
+        cblas_sger(CblasColMajor, curr_layer->length, nn->inputs_length, 1.0f, curr_layer->delta, 1, data, 1, layer_weights_gradients, curr_layer->length);
     } else {
         layer *prev_layer = &nn->layers[layer_index - 1];
         cblas_sger(CblasColMajor, curr_layer->length, prev_layer->length, 1.0f, curr_layer->delta, 1, prev_layer->output, 1, layer_weights_gradients, curr_layer->length);
@@ -234,12 +235,12 @@ void layer_learn_collect_gradient(const neural_network *nn, float *restrict laye
     cblas_saxpy(curr_layer->length, 1.0f, curr_layer->delta, 1, layer_bias_gradients, 1);
 }
 
-void stochastic_gd(const neural_network *nn, float learn_rate, const data *data) {
+void stochastic_gd(const neural_network *nn, float learn_rate, const float *data) {
     assert(nn && data);
 
-    compute_network(nn, data->inputs);
+    compute_network(nn, data);
     for (size_t i = 0; i < nn->length; i++) {
-        layer_learn(nn, nn->length - i - 1, learn_rate, data);
+        layer_learn(nn, nn->length - i - 1, learn_rate, data, nn->inputs_length);
     }
 }
 
@@ -267,19 +268,19 @@ void *thread_worker(void *arg) {
     }
 
     for (size_t i = 0; i < args->data_batch->length; i++) {
-        data *data = &args->data_batch->datas[i];
-        compute_network(nn, data->inputs);
+        float *data = &args->data_batch->all_inputs[i * args->data_batch->inputs_length];
+        compute_network(nn, data);
 
         for (size_t j = 0; j < nn->length; j++) {
             size_t layer_index = nn->length - j - 1;
-            layer_learn_collect_gradient(nn, weights_gradients[layer_index], bias_gradients[layer_index], layer_index, data);
+            layer_learn_collect_gradient(nn, weights_gradients[layer_index], bias_gradients[layer_index], layer_index, data, args->data_batch->expected_indices[i]);
         }
     }
 
     return NULL;
 }
 
-void mini_batch_gd(const neural_network *nn, float learn_rate, const dataset *data_batch) {
+void mini_batch_gd(neural_network *nn, float learn_rate, const dataset *data_batch) {
     assert(nn && data_batch);
 
     ThreadArgs args;
@@ -408,13 +409,13 @@ float test_network_percent(const neural_network *nn, const dataset *test_dataset
 
     int correct = 0;
     for (size_t i = 0; i < test_dataset->length; i++) {
-        compute_network(nn, test_dataset->datas[i].inputs);
+        compute_network(nn, &test_dataset->all_inputs[i * test_dataset->inputs_length]);
         size_t max = 0;
         for (size_t j = 0; j < nn->layers[nn->length - 1].length; j++) {
             if (softmax(nn, j) > softmax(nn, max))
                 max = j;
         }
-        if (max == test_dataset->datas[i].expected_index) {
+        if (max == test_dataset->expected_indices[i]) {
             correct++;
         }
     }

@@ -197,11 +197,11 @@ float cost(const neural_network *nn, const dataset *test_dataset, size_t num_tes
  * @param layer_index Index of the layer to perform learning on.
  * @param learn_rate Learning rate for weight updates.
  * @param data Float pointer to the data element used for learning.
- * @param data_size Size of the data
+ * @param data_expected_index Expected index of the correct output
  *
  * @note The network must be computed using 'compute_network' prior to calling this function.
  */
-void layer_learn(const neural_network *nn, size_t layer_index, float learn_rate, const float *data, size_t data_size);
+void layer_learn(const neural_network *nn, size_t layer_index, float learn_rate, const float *data, size_t data_expected_index);
 
 /**
  * @brief Performs backpropagation for a specific layer but add the change in gradient to a array.
@@ -211,11 +211,12 @@ void layer_learn(const neural_network *nn, size_t layer_index, float learn_rate,
  * @param layer_bias_gradients Pointer to an array of bias to be added to.
  * @param layer_index Index of the layer to perform learning on.
  * @param data Float pointer to the data element used for learning.
- * @param data_size Size of the data
+ * @param data_expected_index Expected index of the correct output
+
  *
  * @note The network must be computed using 'compute_network' prior to calling this function.
  */
-void layer_learn_collect_gradient(const neural_network *nn, float *restrict layer_weights_gradients, float *restrict layer_bias_gradients, size_t layer_index, const float *data, size_t data_size);
+void layer_learn_collect_gradient(const neural_network *nn, float *restrict layer_weights_gradients, float *restrict layer_bias_gradients, size_t layer_index, const float *data, size_t data_expected_index);
 
 /**
  * @brief Performs stochastic gradient descent to the network.
@@ -223,11 +224,10 @@ void layer_learn_collect_gradient(const neural_network *nn, float *restrict laye
  * @param nn Pointer to the neural network.
  * @param learn_rate Learning rate for weight updates.
  * @param data Float pointer to the data element used for learning.
- * @param data_size Size of the data
  *
  * @note The network must be computed using 'compute_network' prior to calling this function.
  */
-void stochastic_gd(const neural_network *nn, float learn_rate, const float *data, const size_t data_size);
+void stochastic_gd(const neural_network *nn, float learn_rate, const float *data);
 
 /**
  * @brief Performs mini-batch gradient descent to the network.
@@ -238,7 +238,7 @@ void stochastic_gd(const neural_network *nn, float learn_rate, const float *data
  *
  * @note The network must be computed using 'compute_network' prior to calling this function.
  */
-void mini_batch_gd(const neural_network *nn, float learn_rate, const dataset *data_batch);
+void mini_batch_gd(neural_network *nn, float learn_rate, const dataset *data_batch);
 
 /**
  * @brief Saves the neural network to a file.

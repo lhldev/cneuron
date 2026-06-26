@@ -38,7 +38,7 @@ typedef struct {
 dataset *dataset_generator(generator_args *args) {
     dataset *batch_dataset = get_random_dataset_sample(args->train_dataset, args->batch_size);
     for (size_t i = 0; i < batch_dataset->length; i++) {
-        data *data = &batch_dataset->datas[i];
+        float *data = &batch_dataset->all_inputs[i * batch_dataset->inputs_length];
         rotate_data(data, IMAGE_SIZE, IMAGE_SIZE, randf(10.0f, -5.0f));
         scale_data(data, IMAGE_SIZE, IMAGE_SIZE, randf(1.2f, -0.1f));
         offset_data(data, IMAGE_SIZE, IMAGE_SIZE, randf(6.0f, -3.0f), randf(6.0f, -3.0f));
@@ -109,12 +109,9 @@ dataset *get_mnist(bool is_test) {
 
     size_t curr_count = 0;
     for (size_t i = 0; i < 10; i++) {
-        for (size_t j = 0; j < datasets[i]->length; j++) {
-            data *curr_data = &mnist_dataset->datas[curr_count];
-            copy_data(curr_data, &datasets[i]->datas[j], inputs_length);
-            curr_count++;
-        }
-
+        memcpy(&mnist_dataset->all_inputs[curr_count * inputs_length], datasets[i]->all_inputs, inputs_length * datasets[i]->length);
+        memcpy(&mnist_dataset->expected_indices[curr_count], datasets[i]->expected_indices, datasets[i]->length);
+        curr_count += datasets[i]->length;
         free(datasets[i]);
     }
 

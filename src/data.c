@@ -89,7 +89,7 @@ dataset *get_random_dataset_sample(const dataset *source_dataset, size_t amount)
     return new_dataset;
 }
 
-void rotate_data(float *data, size_t data_size, int width, int height, float angle) {
+void rotate_data(float *data, int width, int height, float angle) {
     assert(width > 0 && height > 0);
 
     float rad = angle * M_PI / 180.0f;
