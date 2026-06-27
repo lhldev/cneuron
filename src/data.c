@@ -83,7 +83,8 @@ dataset *get_random_dataset_sample(const dataset *source_dataset, size_t amount)
         uint32_t randnum = randnum_u32(source_dataset->length, 0);
         float *random_data = &source_dataset->all_inputs[randnum * inputs_size];
         float *target_data = &new_dataset->all_inputs[i * inputs_size];
-        memcpy(target_data, random_data, inputs_size);
+        memcpy(target_data, random_data, sizeof(float) * inputs_size);
+        new_dataset->expected_indices[i] = source_dataset->expected_indices[randnum];
     }
 
     return new_dataset;

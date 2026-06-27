@@ -5,6 +5,7 @@ extern "C" {
 #include "cneuron/cneuron.h"
 }
 
+
 float sigmoid(float val, bool is_deravative);
 
 dataset *get_xor();

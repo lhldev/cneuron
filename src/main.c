@@ -109,8 +109,8 @@ dataset *get_mnist(bool is_test) {
 
     size_t curr_count = 0;
     for (size_t i = 0; i < 10; i++) {
-        memcpy(&mnist_dataset->all_inputs[curr_count * inputs_length], datasets[i]->all_inputs, inputs_length * datasets[i]->length);
-        memcpy(&mnist_dataset->expected_indices[curr_count], datasets[i]->expected_indices, datasets[i]->length);
+        memcpy(&mnist_dataset->all_inputs[curr_count * inputs_length], datasets[i]->all_inputs, sizeof(float) * inputs_length * datasets[i]->length);
+        memcpy(&mnist_dataset->expected_indices[curr_count], datasets[i]->expected_indices, sizeof(size_t) * datasets[i]->length);
         curr_count += datasets[i]->length;
         free(datasets[i]);
     }
