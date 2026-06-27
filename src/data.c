@@ -12,7 +12,7 @@ dataset *alloc_dataset(size_t dataset_length, size_t inputs_length) {
     dataset *new_dataset = malloc(sizeof(dataset) + (sizeof(size_t) + sizeof(float) * inputs_length) * dataset_length);
     if (!new_dataset) return NULL;
     new_dataset->expected_indices = (size_t *)(new_dataset + 1);
-    new_dataset->all_inputs = (float *)(new_dataset->expected_indices + inputs_length);
+    new_dataset->all_inputs = (float *)(new_dataset->expected_indices + dataset_length);
     new_dataset->length = dataset_length;
     new_dataset->inputs_length = inputs_length;
 

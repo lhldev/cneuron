@@ -235,12 +235,12 @@ void layer_learn_collect_gradient(const neural_network *nn, float *restrict laye
     cblas_saxpy(curr_layer->length, 1.0f, curr_layer->delta, 1, layer_bias_gradients, 1);
 }
 
-void stochastic_gd(const neural_network *nn, float learn_rate, const float *data) {
+void stochastic_gd(const neural_network *nn, float learn_rate, const float *data, size_t data_expected_index) {
     assert(nn && data);
 
     compute_network(nn, data);
     for (size_t i = 0; i < nn->length; i++) {
-        layer_learn(nn, nn->length - i - 1, learn_rate, data, nn->inputs_length);
+        layer_learn(nn, nn->length - i - 1, learn_rate, data, data_expected_index);
     }
 }
 

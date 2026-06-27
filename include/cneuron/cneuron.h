@@ -19,7 +19,6 @@ typedef struct {
     float *all_inputs;        /**< Flat 1D array of size length * inputs_length */
 } dataset;
 
-
 /**
  * @brief Allocate and setup a dataset
  *
@@ -224,10 +223,11 @@ void layer_learn_collect_gradient(const neural_network *nn, float *restrict laye
  * @param nn Pointer to the neural network.
  * @param learn_rate Learning rate for weight updates.
  * @param data Float pointer to the data element used for learning.
+ * @param data_expected_index Expected index of the correct output
  *
  * @note The network must be computed using 'compute_network' prior to calling this function.
  */
-void stochastic_gd(const neural_network *nn, float learn_rate, const float *data);
+void stochastic_gd(const neural_network *nn, float learn_rate, const float *data, size_t data_exptected_index);
 
 /**
  * @brief Performs mini-batch gradient descent to the network.
