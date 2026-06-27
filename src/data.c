@@ -8,24 +8,13 @@
 
 #include "cneuron/cneuron.h"
 
-data *alloc_data(size_t inputs_length) {
-    data *new_data = malloc(sizeof(data) + sizeof(float) * inputs_length);
-    new_data->inputs = (float *)(new_data + 1);
-
-    return new_data;
-}
-
 dataset *alloc_dataset(size_t dataset_length, size_t inputs_length) {
-    dataset *new_dataset = malloc(sizeof(dataset) + (sizeof(data) + sizeof(float) * inputs_length) * dataset_length);
+    dataset *new_dataset = malloc(sizeof(dataset) + (sizeof(size_t) + sizeof(float) * inputs_length) * dataset_length);
     if (!new_dataset) return NULL;
-    new_dataset->datas = (data *)(new_dataset + 1);
+    new_dataset->expected_indices = (size_t *)(new_dataset + 1);
+    new_dataset->all_inputs = (float *)(new_dataset->expected_indices + dataset_length);
     new_dataset->length = dataset_length;
     new_dataset->inputs_length = inputs_length;
-
-    float *inputs_block = (float *)(new_dataset->datas + dataset_length);
-    for (size_t i = 0; i < dataset_length; i++) {
-        new_dataset->datas[i].inputs = inputs_block + i * inputs_length;
-    }
 
     return new_dataset;
 }
@@ -61,8 +50,8 @@ dataset *get_dataset(const char *filename) {
     }
 
     for (size_t i = 0; i < dataset_length; i++) {
-        data *read_data = &read_dataset->datas[i];
-        size_t read_inputs = fread(read_data->inputs, sizeof(float), read_dataset->inputs_length, file);
+        float *read_data = &read_dataset->all_inputs[i * inputs_length];
+        size_t read_inputs = fread(read_data, sizeof(float), read_dataset->inputs_length, file);
         if (read_inputs != read_dataset->inputs_length) {
             fprintf(stderr, "Invalid inputs_length from %s. Expected: %zu. But found: %zu\n", filename, read_dataset->inputs_length, read_inputs);
             free(read_dataset);
@@ -70,7 +59,7 @@ dataset *get_dataset(const char *filename) {
             return NULL;
         }
 
-        if (fread(&(read_data->expected_index), sizeof(uint64_t), 1, file) != 1) {
+        if (fread(&(read_dataset->expected_indices[i]), sizeof(uint64_t), 1, file) != 1) {
             fprintf(stderr, "Failed to read expected_index from %s\n", filename);
             free(read_dataset);
             fclose(file);
@@ -83,34 +72,25 @@ dataset *get_dataset(const char *filename) {
     return read_dataset;
 }
 
-void copy_data(data *restrict target_data, const data *restrict source_data, size_t inputs_length) {
-    assert(inputs_length > 0);
-
-    size_t inputs_size = sizeof(float) * inputs_length;
-
-    target_data->expected_index = source_data->expected_index;
-    memcpy(target_data->inputs, source_data->inputs, inputs_size);
-}
-
 dataset *get_random_dataset_sample(const dataset *source_dataset, size_t amount) {
     assert(source_dataset);
-    dataset *new_dataset = alloc_dataset(amount, source_dataset->inputs_length);
+    size_t inputs_size = source_dataset->inputs_length;
+    dataset *new_dataset = alloc_dataset(amount, inputs_size);
     if (!new_dataset) {
         return NULL;
     }
-    new_dataset->datas = (data *)(new_dataset + 1);
-    new_dataset->length = amount;
-    new_dataset->inputs_length = source_dataset->inputs_length;
-
     for (size_t i = 0; i < amount; i++) {
-        data *random_data = &source_dataset->datas[randnum_u32(source_dataset->length, 0)];
-        copy_data(&new_dataset->datas[i], random_data, source_dataset->inputs_length);
+        uint32_t randnum = randnum_u32(source_dataset->length, 0);
+        float *random_data = &source_dataset->all_inputs[randnum * inputs_size];
+        float *target_data = &new_dataset->all_inputs[i * inputs_size];
+        memcpy(target_data, random_data, sizeof(float) * inputs_size);
+        new_dataset->expected_indices[i] = source_dataset->expected_indices[randnum];
     }
 
     return new_dataset;
 }
 
-void rotate_data(data *data, int width, int height, float angle) {
+void rotate_data(float *data, int width, int height, float angle) {
     assert(width > 0 && height > 0);
 
     float rad = angle * M_PI / 180.0f;
@@ -129,16 +109,16 @@ void rotate_data(data *data, int width, int height, float angle) {
             int src_y = roundf((y - center_y) * cos_angle - (x - center_x) * sin_angle + center_y);
 
             if (src_x >= 0 && src_x < width && src_y >= 0 && src_y < height) {
-                new_inputs[y * width + x] = data->inputs[src_y * width + src_x];
+                new_inputs[y * width + x] = data[src_y * width + src_x];
             }
         }
     }
 
-    memcpy(data->inputs, new_inputs, sizeof(float) * width * height);
+    memcpy(data, new_inputs, sizeof(float) * width * height);
     free(new_inputs);
 }
 
-void scale_data(data *data, int width, int height, float scale) {
+void scale_data(float *data, int width, int height, float scale) {
     assert(width > 0 && height > 0);
 
     int scale_width = roundf(width * scale);
@@ -159,16 +139,16 @@ void scale_data(data *data, int width, int height, float scale) {
             int src_y = roundf(scaled_y / scale);
 
             if (src_x >= 0 && src_x < width && src_y >= 0 && src_y < height) {
-                new_inputs[y * width + x] = data->inputs[src_y * width + src_x];
+                new_inputs[y * width + x] = data[src_y * width + src_x];
             }
         }
     }
 
-    memcpy(data->inputs, new_inputs, sizeof(float) * width * height);
+    memcpy(data, new_inputs, sizeof(float) * width * height);
     free(new_inputs);
 }
 
-void offset_data(data *data, int width, int height, float offset_x, float offset_y) {
+void offset_data(float *data, int width, int height, float offset_x, float offset_y) {
     assert(width > 0 && height > 0);
 
     float *new_inputs = calloc(width * height, sizeof(float));
@@ -184,31 +164,23 @@ void offset_data(data *data, int width, int height, float offset_x, float offset
             int src_x = roundf(new_x);
             int src_y = roundf(new_y);
             if (src_x >= 0 && src_x < width && src_y >= 0 && src_y < height) {
-                new_inputs[y * width + x] = data->inputs[src_y * width + src_x];
+                new_inputs[y * width + x] = data[src_y * width + src_x];
             }
         }
     }
-    memcpy(data->inputs, new_inputs, sizeof(float) * width * height);
+    memcpy(data, new_inputs, sizeof(float) * width * height);
     free(new_inputs);
 }
 
-void noise_data(data *data, size_t inputs_length, float noise_factor, float probability) {
+void noise_data(float *data, size_t inputs_length, float noise_factor, float probability) {
     assert(inputs_length > 0);
 
     for (size_t i = 0; i < inputs_length; i++) {
         if (randf(1.0f, 0.0f) <= probability) {
             float noise = randf(noise_factor, 0);
-            float new_value = data->inputs[i] + noise;
+            float new_value = data[i] + noise;
 
-            data->inputs[i] = fmin(new_value, 1.0f);
+            data[i] = fmin(new_value, 1.0f);
         }
-    }
-}
-
-float output_expected(size_t index, const data *data) {
-    if (index == data->expected_index) {
-        return 1.0f;
-    } else {
-        return 0.0f;
     }
 }

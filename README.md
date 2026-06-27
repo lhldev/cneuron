@@ -25,28 +25,28 @@ float sigmoid(float val, bool is_deravative) {
     return result;
 }
 
-int main() {
+int main(void) {
     // Create XOR dataset
     size_t dataset_length = 4;
     size_t inputs_length = 2;
     dataset *test_dataset = alloc_dataset(dataset_length, inputs_length);
 
     // XOR gate
-    test_dataset->datas[0].inputs[0] = 1.0f;
-    test_dataset->datas[0].inputs[1] = 1.0f;
-    test_dataset->datas[0].expected_index = 0;
+    test_dataset->all_inputs[0] = 1.0f;
+    test_dataset->all_inputs[1] = 1.0f;
+    test_dataset->expected_indices[0] = 0;
 
-    test_dataset->datas[1].inputs[0] = 0.0f;
-    test_dataset->datas[1].inputs[1] = 0.0f;
-    test_dataset->datas[1].expected_index = 0;
+    test_dataset->all_inputs[2] = 0.0f;
+    test_dataset->all_inputs[3] = 0.0f;
+    test_dataset->expected_indices[1] = 0;
 
-    test_dataset->datas[2].inputs[0] = 0.0f;
-    test_dataset->datas[2].inputs[1] = 1.0f;
-    test_dataset->datas[2].expected_index = 1;
+    test_dataset->all_inputs[4] = 0.0f;
+    test_dataset->all_inputs[5] = 1.0f;
+    test_dataset->expected_indices[2] = 1;
 
-    test_dataset->datas[3].inputs[0] = 1.0f;
-    test_dataset->datas[3].inputs[1] = 0.0f;
-    test_dataset->datas[3].expected_index = 1;
+    test_dataset->all_inputs[6] = 1.0f;
+    test_dataset->all_inputs[7] = 0.0f;
+    test_dataset->expected_indices[3] = 1;
 
     // Create network
     size_t layer_length = 2;
@@ -57,7 +57,8 @@ int main() {
 
     for (size_t i = 0; i < 500000; i++) {
         for (size_t j = 0; j < test_dataset->length; j++) {
-            stochastic_gd(nn, 0.001f, &test_dataset->datas[randnum_u32(test_dataset->length, 0)]);
+            size_t randnum = randnum_u32(test_dataset->length, 0);
+            stochastic_gd(nn, 0.001f, &test_dataset->all_inputs[randnum * inputs_length], test_dataset->expected_indices[randnum]);
         }
         if (i % 100000 == 0) {
             printf("Stochastic Multi layer learn cost: %f\n", cost(nn, test_dataset, test_dataset->length));
@@ -70,7 +71,7 @@ int main() {
     return 0;
 }
 ```
-## Benchmark - Highest average recorded
+## Benchmark - Highest score recorded for MNIST dataset
 - Intel Core i5 9th Gen: ~150,000 Data/s
 - Intel Core Ultra 5: ~250,000 Data/s
 

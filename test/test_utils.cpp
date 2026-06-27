@@ -17,21 +17,21 @@ dataset *get_xor() {
     dataset *test_dataset = alloc_dataset(dataset_length, inputs_length);
 
     // XOR gate
-    test_dataset->datas[0].inputs[0] = 1.0f;
-    test_dataset->datas[0].inputs[1] = 1.0f;
-    test_dataset->datas[0].expected_index = 0;
+    test_dataset->all_inputs[0] = 1.0f;
+    test_dataset->all_inputs[1] = 1.0f;
+    test_dataset->expected_indices[0] = 0;
 
-    test_dataset->datas[1].inputs[0] = 0.0f;
-    test_dataset->datas[1].inputs[1] = 0.0f;
-    test_dataset->datas[1].expected_index = 0;
+    test_dataset->all_inputs[2] = 0.0f;
+    test_dataset->all_inputs[3] = 0.0f;
+    test_dataset->expected_indices[1] = 0;
 
-    test_dataset->datas[2].inputs[0] = 0.0f;
-    test_dataset->datas[2].inputs[1] = 1.0f;
-    test_dataset->datas[2].expected_index = 1;
+    test_dataset->all_inputs[4] = 0.0f;
+    test_dataset->all_inputs[5] = 1.0f;
+    test_dataset->expected_indices[2] = 1;
 
-    test_dataset->datas[3].inputs[0] = 1.0f;
-    test_dataset->datas[3].inputs[1] = 0.0f;
-    test_dataset->datas[3].expected_index = 1;
+    test_dataset->all_inputs[6] = 1.0f;
+    test_dataset->all_inputs[7] = 0.0f;
+    test_dataset->expected_indices[3] = 1;
 
     return test_dataset;
 }
@@ -43,21 +43,21 @@ dataset *get_or() {
     dataset *test_dataset = alloc_dataset(dataset_length, inputs_length);
 
     // OR gate
-    test_dataset->datas[1].inputs[0] = 0.0f;
-    test_dataset->datas[1].inputs[1] = 0.0f;
-    test_dataset->datas[1].expected_index = 0;
+    test_dataset->all_inputs[0] = 0.0f;
+    test_dataset->all_inputs[1] = 0.0f;
+    test_dataset->expected_indices[0] = 0;
 
-    test_dataset->datas[0].inputs[0] = 1.0f;
-    test_dataset->datas[0].inputs[1] = 1.0f;
-    test_dataset->datas[0].expected_index = 1;
+    test_dataset->all_inputs[2] = 1.0f;
+    test_dataset->all_inputs[3] = 1.0f;
+    test_dataset->expected_indices[1] = 1;
 
-    test_dataset->datas[2].inputs[0] = 0.0f;
-    test_dataset->datas[2].inputs[1] = 1.0f;
-    test_dataset->datas[2].expected_index = 1;
+    test_dataset->all_inputs[4] = 0.0f;
+    test_dataset->all_inputs[5] = 1.0f;
+    test_dataset->expected_indices[2] = 1;
 
-    test_dataset->datas[3].inputs[0] = 1.0f;
-    test_dataset->datas[3].inputs[1] = 0.0f;
-    test_dataset->datas[3].expected_index = 1;
+    test_dataset->all_inputs[6] = 1.0f;
+    test_dataset->all_inputs[7] = 0.0f;
+    test_dataset->expected_indices[3] = 1;
 
     return test_dataset;
 }
