@@ -109,25 +109,20 @@ void vector_apply_activation(const float *a, float *b, size_t length, float (*ac
 void hadamard_product(const float *restrict a, const float *restrict b, float *restrict c, size_t length);
 
 /**
- * @brief Represents a single layer in a neural network.
- */
-typedef struct layer {
-    float *delta;          /**< Error delta for backpropagation. */
-    float *weighted_input; /**< Weighted input values for the layer. */
-    float *weights;        /**< Weights of the layer in column-major format. */
-    float *bias;           /**< Bias values for the layer. */
-    float *output;         /**< Output values from the layer. */
-    size_t length;         /**< Number of neurons in this layer. */
-} layer;
-
-/**
  * @brief Represents a neural network with multiple layers.
  */
 typedef struct {
-    layer *layers;                             /**< Array of struct to layers in the network. */
     size_t length;                             /**< Number of layers in the network. */
+    const size_t *layer_length;                /**< Number of neuron in each layer. */
+    const size_t *prev_length_sums;           /**< Number of neuron in all previous layer. */
+    const size_t *prev_weights_sums;           /**< Number of weights in all previous layer. */
     size_t inputs_length;                      /**< Number of inputs to the network. */
     float (*activation_function)(float, bool); /**< Pointer to the activation function used in the network. */
+    float *delta;                              /**< Error delta for backpropagation. */
+    float *weighted_input;                     /**< Weighted input values for the layer. */
+    float *weights;                            /**< Weights of the layer in column-major format. */
+    float *bias;                               /**< Bias values for the layer. */
+    float *output;                             /**< Output values from the layer. */
 } neural_network;
 
 /**
