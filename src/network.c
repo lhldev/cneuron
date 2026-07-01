@@ -21,26 +21,29 @@ neural_network *alloc_neural_network(size_t network_length, const size_t *layers
         size_t prev_length = (i == 0) ? inputs_length : layers_length[i - 1];
         total_float += layers_length[i] * 4 + layers_length[i] * prev_length;
     }
-    neural_network *nn = calloc(1, sizeof(neural_network) + sizeof(layer) * network_length + sizeof(float) * total_float);
+    neural_network *nn = calloc(1, sizeof(neural_network) + sizeof(size_t) * network_length * 3 + sizeof(float) * total_float);
     if (!nn) return NULL;
-
-    nn->inputs_length = inputs_length;
     nn->length = network_length;
-
-    nn->layers = (layer *)(nn + 1);
-    float *float_pointing = (float *)(nn->layers + network_length);
-    for (size_t i = 0; i < network_length; ++i) {
-        nn->layers[i].length = layers_length[i];
-
+    nn->inputs_length = inputs_length;
+    nn->layer_lengths = (size_t *)(nn + 1);
+    nn->layer_lengths_sums = nn->layer_lengths + network_length;
+    nn->layer_weights_sums = nn->layer_lengths_sums + network_length;
+    size_t lengths_sums = 0;
+    size_t weights_sums = 0;
+    for (size_t i = 0; i < network_length; i++) {
+        lengths_sums += layers_length[i];
         size_t prev_length = (i == 0) ? inputs_length : layers_length[i - 1];
-        layer *curr_layer = &nn->layers[i];
-        curr_layer->delta = float_pointing;
-        curr_layer->weighted_input = float_pointing + layers_length[i];
-        curr_layer->bias = float_pointing + 2 * layers_length[i];
-        curr_layer->output = float_pointing + 3 * layers_length[i];
-        curr_layer->weights = float_pointing + 4 * layers_length[i];
-        float_pointing += 4 * layers_length[i] + layers_length[i] * prev_length;
+        weights_sums += layers_length[i] * prev_length;
+        nn->layer_lengths_sums[i] = lengths_sums;
+        nn->layer_weights_sums[i] = weights_sums;
+        nn->layer_lengths[i] = layers_length[i];
     }
+
+    nn->delta = (float *)(nn->layer_weights_sums + network_length);
+    nn->weighted_input = nn->delta + lengths_sums;
+    nn->output = nn->weighted_input + lengths_sums;
+    nn->bias = nn->output + lengths_sums;
+    nn->weights = nn->bias + lengths_sums;
 
     return nn;
 }
