@@ -137,7 +137,7 @@ int main(int argc, char **argv) {
 
     // Parameters
     const float learn_rate = 1.5f;
-    const size_t batch_size = 30;
+    const size_t batch_size = 3000;
     const int learn_amount = 50000000;
     const int batch_amount = learn_amount / batch_size;
     const int log_amount = 1000;  // Log once reached a number of batch
