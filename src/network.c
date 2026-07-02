@@ -337,88 +337,92 @@ void mini_batch_gd(neural_network *nn, float learn_rate, const dataset *data_bat
 bool save_network(const char *restrict filename, const neural_network *restrict nn) {
     assert(filename && nn);
 
+    FILE *file = fopen(filename, "wb");
+    if (!file) {
+        fprintf(stderr, "Error opening file '%s' for writing neural network: %s\n", filename, strerror(errno));
+        return false;
+    }
+
+    if (fwrite(&(nn->inputs_length), sizeof(uint64_t), 1, file) != 1 ||
+        fwrite(&(nn->length), sizeof(uint64_t), 1, file) != 1) {
+        fprintf(stderr, "Failed to write network metadata to '%s'\n", filename);
+        goto fail;
+    }
+
+    for (size_t i = 0; i < nn->length; i++) {
+        size_t weights_size = nn->prev_weights_sums[i + 1] - nn->prev_weights_sums[i];
+        size_t len = nn->layer_lengths[i];
+        size_t l_sum = nn->prev_lengths_sums[i];
+        size_t w_sum = nn->prev_weights_sums[i];
+        if (fwrite(&(nn->layer_lengths[i]), sizeof(uint64_t), 1, file) != 1 || fwrite(&nn->weights[w_sum], sizeof(float), weights_size, file) != weights_size || fwrite(&nn->bias[l_sum], sizeof(float), len, file) != len) {
+            fprintf(stderr, "Failed to write layer %zu data to '%s'\n", i, filename);
+            goto fail;
+        }
+    }
+    fclose(file);
+    return true;
+
+fail:
+    fclose(file);
     return false;
-    // FILE *file = fopen(filename, "wb");
-    // if (!file) {
-    //     fprintf(stderr, "Error opening file '%s' for writing neural network: %s\n", filename, strerror(errno));
-    //     return false;
-    // }
-    //
-    // if (fwrite(&(nn->inputs_length), sizeof(uint64_t), 1, file) != 1 ||
-    //     fwrite(&(nn->length), sizeof(uint64_t), 1, file) != 1) {
-    //     fprintf(stderr, "Failed to write network metadata to '%s'\n", filename);
-    //     fclose(file);
-    //     return false;
-    // }
-    //
-    // for (size_t i = 0; i < nn->length; i++) {
-    //     size_t weights_length = nn->layer[i].length * ((i == 0) ? nn->inputs_length : nn->layers[i - 1].length);
-    //
-    //     if (fwrite(&(nn->layers[i].length), sizeof(uint64_t), 1, file) != 1 || fwrite(nn->layers[i].weights, sizeof(float), weights_length, file) != weights_length || fwrite(nn->layers[i].bias, sizeof(float), nn->layers[i].length, file) != nn->layers[i].length) {
-    //         fprintf(stderr, "Failed to write layer %zu data to '%s'\n", i, filename);
-    //         fclose(file);
-    //         return false;
-    //     }
-    // }
-    //
-    // fclose(file);
-    // return true;
 }
 
 bool load_network(const char *restrict filename, const neural_network *restrict nn) {
     assert(filename && nn);
 
+    FILE *file = fopen(filename, "rb");
+    if (!file) {
+        fprintf(stderr, "Error opening file '%s' for reading neural network: %s\n", filename, strerror(errno));
+        return false;
+    }
+
+    uint64_t inputs_length = 0;
+    if (fread(&inputs_length, sizeof(uint64_t), 1, file) != 1) {
+        fprintf(stderr, "Failed to read inputs_length from %s\n", filename);
+        goto fail;
+    }
+    if (inputs_length != nn->inputs_length) {
+        fprintf(stderr, "Invalid input layer length. Expected: %zu. But found: %llu\n", nn->inputs_length, (unsigned long long)inputs_length);
+        goto fail;
+    }
+
+    uint64_t network_length = 0;
+    if (fread(&network_length, sizeof(uint64_t), 1, file) != 1) {
+        fprintf(stderr, "Failed to read network_length from %s\n", filename);
+        goto fail;
+    }
+    if (network_length != nn->length) {
+        fprintf(stderr, "Invalid network layer. Expected: %zu. But found: %llu\n", nn->length, (unsigned long long)network_length);
+        goto fail;
+    }
+
+    for (size_t i = 0; i < nn->length; i++) {
+        size_t weights_size = nn->prev_weights_sums[i + 1] - nn->prev_weights_sums[i];
+        size_t len = nn->layer_lengths[i];
+        size_t l_sum = nn->prev_lengths_sums[i];
+        size_t w_sum = nn->prev_weights_sums[i];
+        uint64_t layer_length = 0;
+        if (fread(&layer_length, sizeof(uint64_t), 1, file) != 1) {
+            fprintf(stderr, "Failed to read layer_length from %s\n", filename);
+            goto fail;
+        }
+        if (layer_length != len) {
+            fprintf(stderr, "Invalid layer length. Expected: %zu. But found: %llu\n", len, (unsigned long long)layer_length);
+            goto fail;
+        }
+
+        if (fread(&nn->weights[w_sum], sizeof(float), weights_size, file) != weights_size || fread(&nn->bias[l_sum], sizeof(float), len, file) != len) {
+            fprintf(stderr, "Failed to read layer %zu data from '%s'\n", i, filename);
+            goto fail;
+        }
+    }
+
+    fclose(file);
+    return true;
+
+fail:
+    fclose(file);
     return false;
-//     FILE *file = fopen(filename, "rb");
-//     if (!file) {
-//         fprintf(stderr, "Error opening file '%s' for reading neural network: %s\n", filename, strerror(errno));
-//         return false;
-//     }
-//
-//     uint64_t inputs_length = 0;
-//     if (fread(&inputs_length, sizeof(uint64_t), 1, file) != 1) {
-//         fprintf(stderr, "Failed to read inputs_length from %s\n", filename);
-//         goto cleanup;
-//     }
-//     if (inputs_length != nn->inputs_length) {
-//         fprintf(stderr, "Invalid input layer length. Expected: %zu. But found: %llu\n", nn->inputs_length, (unsigned long long)inputs_length);
-//         goto cleanup;
-//     }
-//
-//     uint64_t network_length = 0;
-//     if (fread(&network_length, sizeof(uint64_t), 1, file) != 1) {
-//         fprintf(stderr, "Failed to read network_length from %s\n", filename);
-//         goto cleanup;
-//     }
-//     if (network_length != nn->length) {
-//         fprintf(stderr, "Invalid network layer. Expected: %zu. But found: %llu\n", nn->length, (unsigned long long)network_length);
-//         goto cleanup;
-//     }
-//
-//     for (size_t i = 0; i < nn->length; i++) {
-//         uint64_t layer_length = 0;
-//         if (fread(&layer_length, sizeof(uint64_t), 1, file) != 1) {
-//             fprintf(stderr, "Failed to read layer_length from %s\n", filename);
-//             goto cleanup;
-//         }
-//         if (layer_length != nn->layers[i].length) {
-//             fprintf(stderr, "Invalid layer length. Expected: %zu. But found: %llu\n", nn->layers[i].length, (unsigned long long)layer_length);
-//             goto cleanup;
-//         }
-//
-//         size_t weights_length = nn->layers[i].length * ((i == 0) ? nn->inputs_length : nn->layers[i - 1].length);
-//         if (fread(nn->layers[i].weights, sizeof(float), weights_length, file) != weights_length || fread(nn->layers[i].bias, sizeof(float), nn->layers[i].length, file) != nn->layers[i].length) {
-//             fprintf(stderr, "Failed to read layer %zu data from '%s'\n", i, filename);
-//             goto cleanup;
-//         }
-//     }
-//
-//     fclose(file);
-//     return true;
-//
-// cleanup:
-//     fclose(file);
-//     return false;
 }
 
 float test_network_percent(const neural_network *nn, const dataset *test_dataset) {

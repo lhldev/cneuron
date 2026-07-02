@@ -141,7 +141,7 @@ int main(int argc, char **argv) {
     // Parameters
     float learn_rate = 1.5f;
     size_t batch_size = 30;
-    int learn_amount = 4800000;
+    int learn_amount = 50000000;
     int batch_amount = learn_amount / batch_size;
     int log_amount = 1000;  // Log once reached a number of batch
 
