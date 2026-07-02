@@ -193,7 +193,7 @@ void layer_learn(const neural_network *nn, size_t layer_index, float learn_rate,
         size_t next_len = nn->layer_lengths[layer_index + 1];
         size_t next_l_sum = nn->prev_lengths_sums[layer_index + 1];
         size_t next_w_sum = nn->prev_weights_sums[layer_index + 1];
-        cblas_sgemm(CblasColMajor, CblasTrans, CblasNoTrans, next_len, 1, next_len, 1.0f, &nn->weights[next_w_sum], next_len, &nn->delta[next_l_sum], next_len, 0.0f, &nn->output[l_sum], len);
+        cblas_sgemm(CblasColMajor, CblasTrans, CblasNoTrans, len, 1, next_len, 1.0f, &nn->weights[next_w_sum], next_len, &nn->delta[next_l_sum], next_len, 0.0f, &nn->output[l_sum], len);
     }
 
     hadamard_product(&nn->weighted_input[l_sum], &nn->output[l_sum], &nn->delta[l_sum], len);

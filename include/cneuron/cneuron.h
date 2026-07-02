@@ -115,8 +115,8 @@ typedef struct {
     size_t length;                             /**< Number of layers in the network. */
     size_t inputs_length;                      /**< Number of inputs to the network. */
     size_t *layer_lengths;                     /**< Number of neuron in each layer. */
-    size_t *prev_lengths_sums;                /**< Number of neuron from all previous layer. */
-    size_t *prev_weights_sums;                /**< Number of weights from all previous layer. */
+    size_t *prev_lengths_sums;                 /**< Number of neuron from all previous layer. */
+    size_t *prev_weights_sums;                 /**< Number of weights from all previous layer. */
     float (*activation_function)(float, bool); /**< Pointer to the activation function used in the network. */
     float *delta;                              /**< Error delta for backpropagation. */
     float *weighted_input;                     /**< Weighted input values for the layer. */

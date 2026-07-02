@@ -21,25 +21,40 @@ TEST(NetworkTest, RandomFloat) {
 }
 
 TEST(NetworkTest, GetNeuralNetwork) {
-    size_t layer_length = 3;
-    size_t *layer_lengths = (size_t *)malloc(sizeof(size_t) * layer_length);
-    layer_lengths[0] = 2;
-    layer_lengths[1] = 3;
-    layer_lengths[2] = 4;
-    size_t inputs_length = 2;
-    neural_network *nn = get_neural_network(layer_length, layer_lengths, inputs_length, &sigmoid);
+    const size_t network_length = 3;
+    const size_t layer_lengths[] = {2, 3, 4};
+    const size_t inputs_length = 2;
+
+    neural_network *nn = get_neural_network(network_length, layer_lengths, inputs_length, &sigmoid);
 
     ASSERT_NE(nn, nullptr);
-    ASSERT_EQ(nn->length, layer_length);
-    ASSERT_EQ(nn->inputs_length, inputs_length);
-    ASSERT_EQ(nn->activation_function, &sigmoid);
-    ASSERT_NE(nn->layers, nullptr);
-    for (size_t i = 0; i < layer_length; i++) {
-        ASSERT_EQ(nn->layers[i].length, layer_lengths[i]);
+    EXPECT_EQ(nn->length, network_length);
+    EXPECT_EQ(nn->inputs_length, inputs_length);
+    EXPECT_EQ(nn->activation_function, &sigmoid);
+    ASSERT_NE(nn->layer_lengths, nullptr);
+    ASSERT_NE(nn->prev_lengths_sums, nullptr);
+    ASSERT_NE(nn->prev_weights_sums, nullptr);
+    ASSERT_NE(nn->delta, nullptr);
+    ASSERT_NE(nn->weighted_input, nullptr);
+    ASSERT_NE(nn->output, nullptr);
+    ASSERT_NE(nn->bias, nullptr);
+    ASSERT_NE(nn->weights, nullptr);
+
+    for (size_t i = 0; i < network_length; i++) {
+        EXPECT_EQ(nn->layer_lengths[i], layer_lengths[i]);
     }
 
+    EXPECT_EQ(nn->prev_lengths_sums[0], 0);
+    EXPECT_EQ(nn->prev_lengths_sums[1], 2);
+    EXPECT_EQ(nn->prev_lengths_sums[2], 5);
+    EXPECT_EQ(nn->prev_lengths_sums[3], 9);
+
+    EXPECT_EQ(nn->prev_weights_sums[0], 0);
+    EXPECT_EQ(nn->prev_weights_sums[1], 4);
+    EXPECT_EQ(nn->prev_weights_sums[2], 10);
+    EXPECT_EQ(nn->prev_weights_sums[3], 22);
+
     free(nn);
-    free(layer_lengths);
 }
 
 TEST(NetworkTest, FreeDataset) {
@@ -63,12 +78,12 @@ TEST(NetworkTest, ComputeNetwork) {
     float *inputs = (float *)malloc(sizeof(float) * inputs_length);
     inputs[0] = 0.2f;
 
-    nn->layers[0].weights[0] = 0.5f;
-    nn->layers[0].bias[0] = 0.3f;
+    nn->weights[0] = 0.5f;
+    nn->bias[0] = 0.3f;
 
     compute_network(nn, inputs);
 
-    ASSERT_FLOAT_EQ(nn->layers[0].output[0], 0.59868766f);
+    ASSERT_FLOAT_EQ(nn->output[0], 0.59868766f);
 
     free(inputs);
     free(nn);
@@ -82,9 +97,9 @@ TEST(NetworkTest, Softmax) {
     layer_lengths[0] = 3;
     neural_network *nn = get_neural_network(layer_length, layer_lengths, inputs_length, &sigmoid);
 
-    nn->layers[0].output[0] = 0.2f;
-    nn->layers[0].output[1] = 0.3f;
-    nn->layers[0].output[2] = 0.5f;
+    nn->output[0] = 0.2f;
+    nn->output[1] = 0.3f;
+    nn->output[2] = 0.5f;
 
     ASSERT_FLOAT_EQ(softmax(nn, 0), 0.28943311f);
     ASSERT_FLOAT_EQ(softmax(nn, 1), 0.31987305f);
