@@ -130,20 +130,17 @@ int main(int argc, char **argv) {
 
     dataset *train_dataset = get_mnist(false);
     dataset *test_dataset = get_mnist(true);
-    size_t network_length = 3;
-    size_t *layers_length = malloc(sizeof(size_t) * network_length);
-    layers_length[0] = 100;
-    layers_length[1] = 16;
-    layers_length[2] = 10;
+    const size_t network_length = 3;
+    const size_t layer_lengths[] = {100, 16, 10};
 
-    neural_network *nn = get_neural_network(network_length, layers_length, train_dataset->inputs_length, &sigmoid);
+    neural_network *nn = get_neural_network(network_length, layer_lengths, train_dataset->inputs_length, &sigmoid);
 
     // Parameters
-    float learn_rate = 1.5f;
-    size_t batch_size = 30;
-    int learn_amount = 4800000;
-    int batch_amount = learn_amount / batch_size;
-    int log_amount = 1000;  // Log once reached a number of batch
+    const float learn_rate = 1.5f;
+    const size_t batch_size = 30;
+    const int learn_amount = 50000000;
+    const int batch_amount = learn_amount / batch_size;
+    const int log_amount = 1000;  // Log once reached a number of batch
 
     char cmd[100];
     FILE *fp;
@@ -225,6 +222,5 @@ int main(int argc, char **argv) {
     free(train_dataset);
     free(test_dataset);
     free(nn);
-    free(layers_length);
     return 0;
 }
