@@ -59,9 +59,11 @@ void train(neural_network *nn, dataset *restrict train_dataset, dataset *restric
     generator_args args = (generator_args){.train_dataset = train_dataset, .batch_size = batch_size};
     clock_t start_time = clock();
     dataset *batch_dataset = dataset_generator(&args);
+#ifdef USE_THREADING
     if (batch_amount > 1) {
         pthread_create(&thread, NULL, (void *(*)(void *))dataset_generator, &args);
     }
+#endif
     for (unsigned long i = 0; i < batch_amount; i++) {
         if (i != 0) {
             float new_cost = cost(nn, test_dataset, 100);
