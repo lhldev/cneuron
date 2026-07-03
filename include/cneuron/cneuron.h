@@ -93,10 +93,17 @@ void noise_data(float *data, size_t inputs_length, float noise_factor, float pro
  * @param a Pointer to the vector.
  * @param b Pointer to the resulting vector.
  * @param length Number of element of the vector.
- * @param activation_function Activation function used to apply activation.
- * @param is_derivative Toggle between derivative calculation and non derivative calculation.
  */
-void vector_apply_activation(const float *a, float *b, size_t length, float (*activation_function)(float, bool), bool is_derivative);
+void vector_apply_activation(const float *a, float *b, size_t length);
+
+/**
+ * @brief Apply activation derivative to a vector.
+ *
+ * @param a Pointer to the vector.
+ * @param b Pointer to the resulting vector.
+ * @param length Number of element of the vector.
+ */
+void vector_apply_d_activation(const float *a, float *b, size_t length);
 
 /**
  * @brief Compute hadamard product of two vector.
@@ -112,18 +119,17 @@ void hadamard_product(const float *restrict a, const float *restrict b, float *r
  * @brief Represents a neural network with multiple layers.
  */
 typedef struct {
-    size_t length;                             /**< Number of layers in the network. */
-    size_t inputs_length;                      /**< Number of inputs to the network. */
-    size_t total_allocated_memory;             /**< The total memory allocated for the whole neural network. */
-    size_t *layer_lengths;                     /**< Number of neuron in each layer. */
-    size_t *prev_lengths_sums;                 /**< Number of neuron from all previous layer. */
-    size_t *prev_weights_sums;                 /**< Number of weights from all previous layer. */
-    float (*activation_function)(float, bool); /**< Pointer to the activation function used in the network. */
-    float *delta;                              /**< Error delta for backpropagation. */
-    float *weighted_input;                     /**< Weighted input values for the layer. */
-    float *output;                             /**< Output values from the layer. */
-    float *bias;                               /**< Bias values for the layer. */
-    float *weights;                            /**< Weights of the layer in column-major format. */
+    size_t length;                 /**< Number of layers in the network. */
+    size_t inputs_length;          /**< Number of inputs to the network. */
+    size_t total_allocated_memory; /**< The total memory allocated for the whole neural network. */
+    size_t *layer_lengths;         /**< Number of neuron in each layer. */
+    size_t *prev_lengths_sums;     /**< Number of neuron from all previous layer. */
+    size_t *prev_weights_sums;     /**< Number of weights from all previous layer. */
+    float *delta;                  /**< Error delta for backpropagation. */
+    float *weighted_input;         /**< Weighted input values for the layer. */
+    float *output;                 /**< Output values from the layer. */
+    float *bias;                   /**< Bias values for the layer. */
+    float *weights;                /**< Weights of the layer in column-major format. */
 } neural_network;
 
 /**
@@ -143,11 +149,10 @@ neural_network *alloc_neural_network(size_t network_length, const size_t *layers
  * @param network_length Number of layers in the network.
  * @param layers_length Array specifying the number of neurons in each layer.
  * @param inputs_length Number of inputs to the network.
- * @param activation_function Activation function to be used in the network.
  *
  * @return Pointer to the newly created neural network.
  */
-neural_network *get_neural_network(size_t network_length, const size_t *layers_length, size_t inputs_length, float (*activation_function)(float, bool));
+neural_network *get_neural_network(size_t network_length, const size_t *layers_length, size_t inputs_length);
 
 /**
  * @brief Allocates and copy a new neural network.

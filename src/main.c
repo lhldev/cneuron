@@ -23,13 +23,6 @@ float sigmoid(float val, bool is_deravative) {
     return result;
 }
 
-float relu(float val, bool is_deravative) {
-    if (is_deravative)
-        return (val > 0.0f) ? 1.0f : 0.0f;
-
-    return fmax(0.0f, val);
-}
-
 typedef struct {
     dataset *train_dataset;
     size_t batch_size;
@@ -133,7 +126,7 @@ int main(int argc, char **argv) {
     const size_t network_length = 3;
     const size_t layer_lengths[] = {100, 16, 10};
 
-    neural_network *nn = get_neural_network(network_length, layer_lengths, train_dataset->inputs_length, &sigmoid);
+    neural_network *nn = get_neural_network(network_length, layer_lengths, train_dataset->inputs_length);
 
     // Parameters
     const float learn_rate = 10.0f;
