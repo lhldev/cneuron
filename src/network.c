@@ -307,7 +307,7 @@ void *thread_worker(void *arg) {
     return NULL;
 }
 
-#define THREAD_COUNT 4
+#define THREAD_COUNT 5
 
 void mini_batch_gd(neural_network *nn, float learn_rate, const dataset *data_batch) {
     assert(nn && data_batch);
