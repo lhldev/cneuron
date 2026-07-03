@@ -136,8 +136,8 @@ int main(int argc, char **argv) {
     neural_network *nn = get_neural_network(network_length, layer_lengths, train_dataset->inputs_length, &sigmoid);
 
     // Parameters
-    const float learn_rate = 1.5f;
-    const size_t batch_size = 30;
+    const float learn_rate = 10.0f;
+    const size_t batch_size = 3000;
     const int learn_amount = 50000000;
     const int batch_amount = learn_amount / batch_size;
     const int log_amount = 1000;  // Log once reached a number of batch

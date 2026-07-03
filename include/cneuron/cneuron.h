@@ -114,6 +114,7 @@ void hadamard_product(const float *restrict a, const float *restrict b, float *r
 typedef struct {
     size_t length;                             /**< Number of layers in the network. */
     size_t inputs_length;                      /**< Number of inputs to the network. */
+    size_t total_allocated_memory;             /**< The total memory allocated for the whole neural network. */
     size_t *layer_lengths;                     /**< Number of neuron in each layer. */
     size_t *prev_lengths_sums;                 /**< Number of neuron from all previous layer. */
     size_t *prev_weights_sums;                 /**< Number of weights from all previous layer. */
@@ -147,6 +148,15 @@ neural_network *alloc_neural_network(size_t network_length, const size_t *layers
  * @return Pointer to the newly created neural network.
  */
 neural_network *get_neural_network(size_t network_length, const size_t *layers_length, size_t inputs_length, float (*activation_function)(float, bool));
+
+/**
+ * @brief Allocates and copy a new neural network.
+ *
+ * @param neural_network The source to copy from
+ *
+ * @return Pointer to the newly created neural network.
+ */
+neural_network *copy_neural_network(const neural_network *nn);
 
 /**
  * @brief Computes the output of the neural network for the given inputs.
