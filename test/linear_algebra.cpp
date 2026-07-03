@@ -16,7 +16,7 @@ TEST(LinearAlgebraTest, VectorApplyActivation) {
     a[1] = -1.2f;
     a[2] = -0.2f;
 
-    vector_apply_activation(a, b, length, sigmoid, false);
+    vector_apply_activation(a, b, length);
 
     for (size_t i = 0; i < length; i++) {
         ASSERT_FLOAT_EQ(b[i], sigmoid(a[i], false));
