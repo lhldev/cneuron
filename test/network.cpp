@@ -25,12 +25,11 @@ TEST(NetworkTest, GetNeuralNetwork) {
     const size_t layer_lengths[] = {2, 3, 4};
     const size_t inputs_length = 2;
 
-    neural_network *nn = get_neural_network(network_length, layer_lengths, inputs_length, &sigmoid);
+    neural_network *nn = get_neural_network(network_length, layer_lengths, inputs_length);
 
     ASSERT_NE(nn, nullptr);
     EXPECT_EQ(nn->length, network_length);
     EXPECT_EQ(nn->inputs_length, inputs_length);
-    EXPECT_EQ(nn->activation_function, &sigmoid);
     ASSERT_NE(nn->layer_lengths, nullptr);
     ASSERT_NE(nn->prev_lengths_sums, nullptr);
     ASSERT_NE(nn->prev_weights_sums, nullptr);
@@ -61,7 +60,7 @@ TEST(NetworkTest, FreeDataset) {
     size_t layer_length = 1;
     size_t *layer_lengths = (size_t *)malloc(sizeof(size_t) * layer_length);
     layer_lengths[0] = 2;
-    neural_network *nn = get_neural_network(layer_length, layer_lengths, 2, nullptr);
+    neural_network *nn = get_neural_network(layer_length, layer_lengths, 2);
 
     free(nn);
     // No crash
@@ -73,7 +72,7 @@ TEST(NetworkTest, ComputeNetwork) {
     size_t inputs_length = 1;
     size_t *layer_lengths = (size_t *)malloc(sizeof(size_t) * layer_length);
     layer_lengths[0] = 1;
-    neural_network *nn = get_neural_network(layer_length, layer_lengths, inputs_length, &sigmoid);
+    neural_network *nn = get_neural_network(layer_length, layer_lengths, inputs_length);
 
     float *inputs = (float *)malloc(sizeof(float) * inputs_length);
     inputs[0] = 0.2f;
@@ -95,7 +94,7 @@ TEST(NetworkTest, Softmax) {
     size_t inputs_length = 1;
     size_t *layer_lengths = (size_t *)malloc(sizeof(size_t) * layer_length);
     layer_lengths[0] = 3;
-    neural_network *nn = get_neural_network(layer_length, layer_lengths, inputs_length, &sigmoid);
+    neural_network *nn = get_neural_network(layer_length, layer_lengths, inputs_length);
 
     nn->output[0] = 0.2f;
     nn->output[1] = 0.3f;
@@ -117,7 +116,7 @@ TEST(NetworkTest, StochasticGDSingleLayer) {
     size_t layer_length = 1;
     size_t *layer_lengths = (size_t *)malloc(sizeof(size_t) * layer_length);
     layer_lengths[0] = 2;
-    neural_network *nn = get_neural_network(layer_length, layer_lengths, test_dataset->inputs_length, &sigmoid);
+    neural_network *nn = get_neural_network(layer_length, layer_lengths, test_dataset->inputs_length);
 
     for (size_t i = 0; i < 50000; i++) {
         for (size_t j = 0; j < test_dataset->length; j++) {
@@ -145,7 +144,7 @@ TEST(NetworkTest, StochasticGDTests) {
     size_t *layer_lengths = (size_t *)malloc(sizeof(size_t) * layer_length);
     layer_lengths[0] = 4;
     layer_lengths[1] = 2;
-    neural_network *nn = get_neural_network(layer_length, layer_lengths, test_dataset->inputs_length, &sigmoid);
+    neural_network *nn = get_neural_network(layer_length, layer_lengths, test_dataset->inputs_length);
 
     for (size_t i = 0; i < 500000; i++) {
         for (size_t j = 0; j < test_dataset->length; j++) {
@@ -167,7 +166,7 @@ TEST(NetworkTest, StochasticGDTests) {
     layer_length = 1;
     layer_lengths = (size_t *)malloc(sizeof(size_t) * layer_length);
     layer_lengths[0] = 2;
-    nn = get_neural_network(layer_length, layer_lengths, test_dataset->inputs_length, &sigmoid);
+    nn = get_neural_network(layer_length, layer_lengths, test_dataset->inputs_length);
 
     for (size_t i = 0; i < 50000; i++) {
         for (size_t j = 0; j < test_dataset->length; j++) {
@@ -195,7 +194,7 @@ TEST(NetworkTest, MiniBatchGDTests) {
     size_t *layer_lengths = (size_t *)malloc(sizeof(size_t) * layer_length);
     layer_lengths[0] = 4;
     layer_lengths[1] = 2;
-    neural_network *nn = get_neural_network(layer_length, layer_lengths, test_dataset->inputs_length, &sigmoid);
+    neural_network *nn = get_neural_network(layer_length, layer_lengths, test_dataset->inputs_length);
 
     for (size_t i = 0; i < 2000000; i++) {
         dataset *batch_dataset = get_random_dataset_sample(test_dataset, test_dataset->length);
@@ -216,7 +215,7 @@ TEST(NetworkTest, MiniBatchGDTests) {
     layer_length = 1;
     layer_lengths = (size_t *)malloc(sizeof(size_t) * layer_length);
     layer_lengths[0] = 2;
-    nn = get_neural_network(layer_length, layer_lengths, test_dataset->inputs_length, &sigmoid);
+    nn = get_neural_network(layer_length, layer_lengths, test_dataset->inputs_length);
 
     for (size_t i = 0; i < 100000; i++) {
         dataset *batch_dataset = get_random_dataset_sample(test_dataset, test_dataset->length);

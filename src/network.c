@@ -52,7 +52,7 @@ neural_network *alloc_neural_network(size_t network_length, const size_t *layers
     return nn;
 }
 
-neural_network *get_neural_network(size_t network_length, const size_t *layers_length, size_t inputs_length, float (*activation_function)(float, bool)) {
+neural_network *get_neural_network(size_t network_length, const size_t *layers_length, size_t inputs_length) {
     assert(layers_length);
 
     neural_network *nn = alloc_neural_network(network_length, layers_length, inputs_length);
@@ -62,8 +62,6 @@ neural_network *get_neural_network(size_t network_length, const size_t *layers_l
         // Initialise weights to -1.0f - 1.0f
         nn->weights[i] = randf(2.0f, -1.0f);
     }
-
-    nn->activation_function = activation_function;
     return nn;
 }
 
@@ -86,9 +84,9 @@ neural_network *copy_neural_network(const neural_network *nn) {
 
 void compute_network(const neural_network *restrict nn, const float *restrict inputs) {
     assert(nn && inputs);
-    cblas_sgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, nn->layer_lengths[0], 1, nn->inputs_length, 1.0f, nn->weights, nn->layer_lengths[0], inputs, nn->inputs_length, 0.0f, nn->weighted_input, nn->layer_lengths[0]);
-    cblas_saxpy(nn->layer_lengths[0], 1.0f, nn->bias, 1, nn->weighted_input, 1);
-    vector_apply_activation(nn->weighted_input, nn->output, nn->layer_lengths[0], nn->activation_function, false);
+    cblas_scopy(nn->layer_lengths[0], nn->bias, 1, nn->weighted_input, 1);
+    cblas_sgemv(CblasColMajor, CblasNoTrans, nn->layer_lengths[0], nn->inputs_length, 1.0f, nn->weights, nn->layer_lengths[0], inputs, 1, 1.0f, nn->weighted_input, 1);
+    vector_apply_activation(nn->weighted_input, nn->output, nn->layer_lengths[0]);
     for (size_t i = 1; i < nn->length; i++) {
         size_t len = nn->layer_lengths[i];
         size_t prev_len = nn->layer_lengths[i - 1];
@@ -96,9 +94,9 @@ void compute_network(const neural_network *restrict nn, const float *restrict in
         size_t l_sum = nn->prev_lengths_sums[i];
         size_t prev_l_sum = nn->prev_lengths_sums[i - 1];
 
-        cblas_sgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, len, 1, prev_len, 1.0f, &nn->weights[w_sum], len, &nn->output[prev_l_sum], prev_len, 0.0f, &nn->weighted_input[l_sum], len);
-        cblas_saxpy(len, 1.0f, &nn->bias[l_sum], 1, &nn->weighted_input[l_sum], 1);
-        vector_apply_activation(&nn->weighted_input[l_sum], &nn->output[l_sum], len, nn->activation_function, false);
+        cblas_scopy(len, &nn->bias[l_sum], 1, &nn->weighted_input[l_sum], 1);
+        cblas_sgemv(CblasColMajor, CblasNoTrans, len, prev_len, 1.0f, &nn->weights[w_sum], len, &nn->output[prev_l_sum], 1, 1.0f, &nn->weighted_input[l_sum], 1);
+        vector_apply_activation(&nn->weighted_input[l_sum], &nn->output[l_sum], len);
     }
 }
 
@@ -203,7 +201,7 @@ void layer_learn(const neural_network *nn, size_t layer_index, float learn_rate,
     size_t l_sum = nn->prev_lengths_sums[layer_index];
     size_t w_sum = nn->prev_weights_sums[layer_index];
     // f'(Z_i) in weighted_input
-    vector_apply_activation(&nn->weighted_input[l_sum], &nn->weighted_input[l_sum], len, nn->activation_function, true);
+    vector_apply_d_activation(&nn->weighted_input[l_sum], &nn->weighted_input[l_sum], len);
     if (layer_index == nn->length - 1) {
         // Error in output
         nn->output[l_sum + data_expected_index] -= 1.0f;
@@ -242,7 +240,7 @@ void layer_learn_collect_gradient(const neural_network *nn, float *restrict laye
     size_t len = nn->layer_lengths[layer_index];
     size_t l_sum = nn->prev_lengths_sums[layer_index];
     // f'(Z_i) in weighted_input
-    vector_apply_activation(&nn->weighted_input[l_sum], &nn->weighted_input[l_sum], len, nn->activation_function, true);
+    vector_apply_d_activation(&nn->weighted_input[l_sum], &nn->weighted_input[l_sum], len);
     if (layer_index == nn->length - 1) {
         // Error in output
         nn->output[l_sum + data_expected_index] -= 1.0f;
@@ -309,7 +307,7 @@ void *thread_worker(void *arg) {
     return NULL;
 }
 
-#define THREAD_COUNT 4
+#define THREAD_COUNT 5
 
 void mini_batch_gd(neural_network *nn, float learn_rate, const dataset *data_batch) {
     assert(nn && data_batch);
