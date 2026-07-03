@@ -40,20 +40,20 @@ dataset *dataset_generator(generator_args *args) {
     return batch_dataset;
 }
 
-void train(neural_network *nn, dataset *restrict train_dataset, dataset *restrict test_dataset, float learn_rate, int batch_amount, int log_amount, size_t batch_size) {
+void train(neural_network *nn, dataset *restrict train_dataset, dataset *restrict test_dataset, float learn_rate, size_t batch_size, unsigned int batch_amount) {
 #ifdef USE_THREADING
     pthread_t thread;
 #endif
     generator_args args = (generator_args){.train_dataset = train_dataset, .batch_size = batch_size};
     clock_t start_time = clock();
     dataset *batch_dataset = dataset_generator(&args);
-    for (int i = 0; i < batch_amount; i++) {
-        if (i % log_amount == 0 && i != 0) {
+    for (unsigned long i = 0; i < batch_amount; i++) {
+        if (i != 0) {
             float new_cost = cost(nn, test_dataset, 100);
             clock_t elapsed_ms = clock() - start_time;
             float elapsed_s = (float)elapsed_ms / CLOCKS_PER_SEC;
-            float speed = (float)log_amount * batch_size / elapsed_s;
-            printf("Learned: %zu, cost: %f, elapsed time: %.2fs, speed: %.2f Data/s\n", i * batch_size, new_cost, elapsed_s, speed);
+            float speed = (float) batch_size / elapsed_s;
+            printf("Learned: %zu, Batch: %zu, cost: %f, elapsed time: %.2fs, speed: %.2f Data/s\n", i * batch_size, i, new_cost, elapsed_s, speed);
             start_time = clock();
         }
 
@@ -130,10 +130,8 @@ int main(int argc, char **argv) {
 
     // Parameters
     const float learn_rate = 10.0f;
-    const size_t batch_size = 3000;
-    const int learn_amount = 50000000;
-    const int batch_amount = learn_amount / batch_size;
-    const int log_amount = 1000;  // Log once reached a number of batch
+    const size_t batch_size = 300000;
+    const unsigned int batch_amount = 1000;
 
     char cmd[100];
     FILE *fp;
@@ -162,8 +160,8 @@ int main(int argc, char **argv) {
                 printf("Neural network loaded!\n");
             }
         } else if (cmd[0] == 't') {
-            train(nn, train_dataset, test_dataset, learn_rate, batch_amount, log_amount, batch_size);
-            printf("Training completed. Trained for %d times.\n", learn_amount);
+            train(nn, train_dataset, test_dataset, learn_rate, batch_size, batch_amount);
+            printf("Training completed. Trained for %d batches.\n", batch_amount);
         } else if (cmd[0] == 'T') {
             printf("Testing neural network...\n");
             printf("Network is %.2f%% correct!\n", test_network_percent(nn, test_dataset));
