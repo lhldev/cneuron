@@ -68,18 +68,19 @@ neural_network *get_neural_network(size_t network_length, const size_t *layers_l
 }
 
 neural_network *copy_neural_network(const neural_network *nn) {
+    if (!nn) return NULL;
     neural_network *new_nn = malloc(nn->total_allocated_memory);
+    if (!new_nn) return NULL;
     memcpy(new_nn, nn, nn->total_allocated_memory);
-    size_t network_length = nn->length;
-    new_nn->layer_lengths = (size_t *)(new_nn + 1);
-    new_nn->prev_lengths_sums = new_nn->layer_lengths + network_length;
-    new_nn->prev_weights_sums = new_nn->prev_lengths_sums + network_length + 1;
-    new_nn->delta = (float *)(new_nn->prev_weights_sums + network_length + 1);
-    size_t total_l_sum = nn->prev_lengths_sums[network_length];
-    new_nn->weighted_input = new_nn->delta + total_l_sum;
-    new_nn->output = new_nn->weighted_input + total_l_sum;
-    new_nn->bias = new_nn->output + total_l_sum;
-    new_nn->weights = new_nn->bias + total_l_sum;
+    ptrdiff_t diff = (char *)new_nn - (char *)nn;
+    new_nn->layer_lengths = (size_t *)((char *)nn->layer_lengths + diff);
+    new_nn->prev_lengths_sums = (size_t *)((char *)nn->prev_lengths_sums + diff);
+    new_nn->prev_weights_sums = (size_t *)((char *)nn->prev_weights_sums + diff);
+    new_nn->delta = (float *)((char *)nn->delta + diff);
+    new_nn->weighted_input = (float *)((char *)nn->weighted_input + diff);
+    new_nn->output = (float *)((char *)nn->output + diff);
+    new_nn->bias = (float *)((char *)nn->bias + diff);
+    new_nn->weights = (float *)((char *)nn->weights + diff);
     return new_nn;
 }
 
