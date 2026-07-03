@@ -114,7 +114,7 @@ void hadamard_product(const float *restrict a, const float *restrict b, float *r
 typedef struct {
     size_t length;                             /**< Number of layers in the network. */
     size_t inputs_length;                      /**< Number of inputs to the network. */
-    size_t total_allocated_memory;               /**< The total memory allocated for the whole neural network. */
+    size_t total_allocated_memory;             /**< The total memory allocated for the whole neural network. */
     size_t *layer_lengths;                     /**< Number of neuron in each layer. */
     size_t *prev_lengths_sums;                 /**< Number of neuron from all previous layer. */
     size_t *prev_weights_sums;                 /**< Number of weights from all previous layer. */

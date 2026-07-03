@@ -278,27 +278,21 @@ void stochastic_gd(const neural_network *nn, float learn_rate, const float *data
 }
 
 typedef struct {
+    int thread_index;
     neural_network *nn;
     const dataset *data_batch;
     size_t start_index;
     size_t end_index;
-    float **weights_gradients;
-    float **bias_gradients;
-    int thread_index;
+    float *bias_gradients;
+    float *weights_gradients;
 } ThreadArgs;
 
 void *thread_worker(void *arg) {
     ThreadArgs *args = (ThreadArgs *)arg;
     neural_network *nn = args->nn;
 
-    float **weights_gradients = args->weights_gradients;
-    float **bias_gradients = args->bias_gradients;
-
-    for (size_t i = 0; i < nn->length; i++) {
-        size_t weights_size = nn->layer_lengths[i] * ((i == 0) ? nn->inputs_length : nn->layer_lengths[i - 1]);
-        weights_gradients[i] = calloc(weights_size, sizeof(float));
-        bias_gradients[i] = calloc(nn->layer_lengths[i], sizeof(float));
-    }
+    float *weights_gradients = args->weights_gradients;
+    float *bias_gradients = args->bias_gradients;
 
     for (size_t i = args->start_index; i < args->end_index; i++) {
         float *data = &args->data_batch->all_inputs[i * args->data_batch->inputs_length];
@@ -306,14 +300,16 @@ void *thread_worker(void *arg) {
 
         for (size_t j = 0; j < nn->length; j++) {
             size_t layer_index = nn->length - j - 1;
-            layer_learn_collect_gradient(nn, weights_gradients[layer_index], bias_gradients[layer_index], layer_index, data, args->data_batch->expected_indices[i]);
+            size_t l_sum = nn->prev_lengths_sums[layer_index];
+            size_t w_sum = nn->prev_weights_sums[layer_index];
+            layer_learn_collect_gradient(nn, &weights_gradients[w_sum], &bias_gradients[l_sum], layer_index, data, args->data_batch->expected_indices[i]);
         }
     }
 
     return NULL;
 }
 
-#define THREAD_COUNT 4 
+#define THREAD_COUNT 4
 
 void mini_batch_gd(neural_network *nn, float learn_rate, const dataset *data_batch) {
     assert(nn && data_batch);
@@ -324,12 +320,13 @@ void mini_batch_gd(neural_network *nn, float learn_rate, const dataset *data_bat
     ThreadArgs args[THREAD_COUNT];
     size_t chunk_size = data_batch->length / THREAD_COUNT;
     for (int i = 0; i < THREAD_COUNT; i++) {
+        args[i].thread_index = i;
         args[i].nn = copy_neural_network(nn);
         args[i].data_batch = data_batch;
         args[i].start_index = i * chunk_size;
         args[i].end_index = (i == THREAD_COUNT - 1) ? data_batch->length : (i + 1) * chunk_size;
-        args[i].weights_gradients = malloc(nn->length * sizeof(float *));
-        args[i].bias_gradients = malloc(nn->length * sizeof(float *));
+        args[i].bias_gradients = calloc(nn->prev_lengths_sums[nn->length], sizeof(float));
+        args[i].weights_gradients = calloc(nn->prev_weights_sums[nn->length], sizeof(float));
 
 #ifdef USE_THREADING
         pthread_create(&threads[i], NULL, thread_worker, &args[i]);
@@ -351,22 +348,18 @@ void mini_batch_gd(neural_network *nn, float learn_rate, const dataset *data_bat
         size_t weights_size = nn->prev_weights_sums[i + 1] - nn->prev_weights_sums[i];
         for (size_t j = 0; j < weights_size; j++) {
             for (int t = 0; t < THREAD_COUNT; t++) {
-                nn->weights[w_sum + j] -= args[t].weights_gradients[i][j] / data_batch->length * learn_rate;
+                nn->weights[w_sum + j] -= args[t].weights_gradients[w_sum + j] / data_batch->length * learn_rate;
             }
         }
 
         for (size_t j = 0; j < len; j++) {
             for (int t = 0; t < THREAD_COUNT; t++) {
-                nn->bias[l_sum + j] -= args[t].bias_gradients[i][j] / data_batch->length * learn_rate;
+                nn->bias[l_sum + j] -= args[t].bias_gradients[l_sum + j] / data_batch->length * learn_rate;
             }
         }
     }
 
     for (int i = 0; i < THREAD_COUNT; i++) {
-        for (size_t j = 0; j < nn->length; j++) {
-            free(args[i].weights_gradients[j]);
-            free(args[i].bias_gradients[j]);
-        }
         free(args[i].weights_gradients);
         free(args[i].bias_gradients);
         free(args[i].nn);
