@@ -146,7 +146,7 @@ TEST(NetworkTest, StochasticGDTests) {
     layer_lengths[1] = 2;
     neural_network *nn = get_neural_network(layer_length, layer_lengths, test_dataset->inputs_length);
 
-    for (size_t i = 0; i < 500000; i++) {
+    for (size_t i = 0; i < 700000; i++) {
         for (size_t j = 0; j < test_dataset->length; j++) {
             size_t randnum = randnum_u32(test_dataset->length, 0);
             stochastic_gd(nn, 0.001f, &test_dataset->all_inputs[randnum * test_dataset->inputs_length], test_dataset->expected_indices[randnum]);

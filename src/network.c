@@ -58,10 +58,19 @@ neural_network *get_neural_network(size_t network_length, const size_t *layers_l
     neural_network *nn = alloc_neural_network(network_length, layers_length, inputs_length);
     if (!nn) return NULL;
 
-    for (size_t i = 0; i < nn->prev_weights_sums[nn->length]; i++) {
-        // Initialise weights to -1.0f - 1.0f
-        nn->weights[i] = randf(2.0f, -1.0f);
+    for (size_t i = 0; i < network_length; i++) {
+        size_t n_in = (i == 0) ? inputs_length : layers_length[i - 1];
+        size_t n_out = layers_length[i];
+
+        float limit = sqrtf(6.0f / (float)(n_in + n_out));
+
+        size_t w_start = nn->prev_weights_sums[i];
+        size_t w_end = nn->prev_weights_sums[i + 1];
+        for (size_t j = w_start; j < w_end; j++) {
+            nn->weights[j] = randf(limit * 2, -limit);
+        }
     }
+
     return nn;
 }
 
