@@ -59,8 +59,8 @@ neural_network *get_neural_network(size_t network_length, const size_t *layers_l
     if (!nn) return NULL;
 
     for (size_t i = 0; i < nn->prev_weights_sums[nn->length]; i++) {
-        // Initialise weights to -1.0f - 1.0f
-        nn->weights[i] = randf(2.0f, -1.0f);
+        // Initialise weights to -0.1f - 0.1f
+        nn->weights[i] = randf(0.2f, -0.1f);
     }
     return nn;
 }

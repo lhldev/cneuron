@@ -57,32 +57,36 @@ void train(neural_network *nn, dataset *restrict train_dataset, dataset *restric
     pthread_t thread;
 #endif
     generator_args args = (generator_args){.train_dataset = train_dataset, .batch_size = batch_size};
-    clock_t start_time = clock();
+    struct timespec start_time, end_time;
+    clock_gettime(CLOCK_MONOTONIC, &start_time);
     dataset *batch_dataset = dataset_generator(&args);
 #ifdef USE_THREADING
     if (batch_amount > 1) {
         pthread_create(&thread, NULL, (void *(*)(void *))dataset_generator, &args);
     }
 #endif
-    for (unsigned long i = 0; i < batch_amount; i++) {
-        if (i != 0) {
-            float new_cost = cost(nn, test_dataset, 100);
-            clock_t elapsed_ms = clock() - start_time;
-            float elapsed_s = (float)elapsed_ms / CLOCKS_PER_SEC;
-            float speed = (float)batch_size / elapsed_s;
-            printf("Learned: %zu, Batch: %zu, cost: %f, elapsed time: %.4fs, speed: %.2f Data/s\n", i * batch_size, i, new_cost, elapsed_s, speed);
-            start_time = clock();
-            free(batch_dataset);
-#ifdef USE_THREADING
-            pthread_join(thread, (void **)&batch_dataset);
-            if (i < batch_amount - 1) {
-                pthread_create(&thread, NULL, (void *(*)(void *))dataset_generator, &args);
-            }
-#else
-            batch_dataset = dataset_generator(&args);
-#endif
-        }
+    // Iteration i = 0
+    mini_batch_gd(nn, learn_rate, batch_dataset);
 
+    for (unsigned long i = 1; i < batch_amount; i++) {
+        const size_t log_amount = 100;
+        if (i % log_amount == 0) {
+            float new_cost = cost(nn, test_dataset, 100);
+            clock_gettime(CLOCK_MONOTONIC, &end_time);
+            float elapsed_s = (end_time.tv_sec - start_time.tv_sec) + (end_time.tv_nsec - start_time.tv_nsec) / 1e9f;
+            float speed = (float)batch_size * log_amount / elapsed_s;
+            printf("Learned: %zu, Batch: %zu, cost: %f, elapsed time: %.4fs, speed: %.2f Data/s\n", i * batch_size, i, new_cost, elapsed_s, speed);
+            start_time = end_time;
+        }
+        free(batch_dataset);
+#ifdef USE_THREADING
+        pthread_join(thread, (void **)&batch_dataset);
+        if (i < batch_amount - 1) {
+            pthread_create(&thread, NULL, (void *(*)(void *))dataset_generator, &args);
+        }
+#else
+        batch_dataset = dataset_generator(&args);
+#endif
         mini_batch_gd(nn, learn_rate, batch_dataset);
     }
     // Last dataset not used
@@ -139,14 +143,14 @@ int main(int argc, char **argv) {
     dataset *train_dataset = get_mnist(false);
     dataset *test_dataset = get_mnist(true);
     const size_t network_length = 3;
-    const size_t layer_lengths[] = {100, 16, 10};
+    const size_t layer_lengths[] = {1024, 512, 10};
 
     neural_network *nn = get_neural_network(network_length, layer_lengths, train_dataset->inputs_length);
 
     // Parameters
-    const float learn_rate = 0.2f;
-    const size_t batch_size = 1000;
-    const unsigned int batch_amount = 200000;
+    const float learn_rate = 0.01f;
+    const size_t batch_size = 64;
+    const unsigned int batch_amount = 500000;
 
     char cmd[100];
     FILE *fp;
